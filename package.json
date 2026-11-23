@@ -1,0 +1,10 @@
+{
+  "name": "conductor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Conductor: one team for all your AIs.",
+  "scripts": { "dev": "node dev.js" },
+  "dependencies": { "@vercel/blob": "latest" },
+  "engines": { "node": ">=20" }
+}
