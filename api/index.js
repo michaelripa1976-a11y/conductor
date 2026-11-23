@@ -113,6 +113,21 @@ async function agent(req, res, parts, q) {
 async function coach(req, res, parts, q) {
   const action = parts[0] || '';
   if (action === 'health') {
+    if (q.get('deep')) { // storage self-test: no user data involved
+      const n = `health/deep-${rid(6)}.json`, steps = [];
+      const step = async (name, fn) => { const t0 = Date.now(); try { steps.push({ name, ok: true, info: await fn(), ms: Date.now() - t0 }); } catch (e) { steps.push({ name, ok: false, error: `${e && e.name}: ${String(e && e.message).slice(0, 240)}`, ms: Date.now() - t0 }); } };
+      let e1 = null, e2 = null;
+      await step('create', async () => { await putDoc(n, { v: 1 }, { create: true }); });
+      await step('read1', async () => { const g = await getDoc(n); e1 = g && g.etag; return { v: g && g.data.v, etag: String(e1).slice(0, 12), etagType: typeof e1 }; });
+      await step('write-with-etag', async () => { await putDoc(n, { v: 2 }, { etag: e1 }); });
+      await step('read2', async () => { const g = await getDoc(n); e2 = g && g.etag; return { v: g && g.data.v, etagChanged: e2 !== e1 }; });
+      await step('write-with-etag-2', async () => { await putDoc(n, { v: 3 }, { etag: e2 }); });
+      await step('read3', async () => { const g = await getDoc(n); return { v: g && g.data.v }; });
+      await step('updateDoc', async () => { const d = await updateDoc(n, d => { d.v = 4; }); return { v: d && d.v }; });
+      await step('create-again-should-fail', async () => { try { await putDoc(n, { v: 9 }, { create: true }); return 'NOT REJECTED'; } catch (e) { return e instanceof Exists ? 'rejected as expected' : `other error ${e && e.name}: ${String(e && e.message).slice(0, 160)}`; } });
+      await step('delete', async () => { await delDoc(n); });
+      return send(res, 200, { storage: storageKind(), node: process.version, steps });
+    }
     try { const n = 'health/ping.json'; await putDoc(n, { at: Date.now() }); const g = await getDoc(n); return send(res, 200, { ok: !!g, storage: storageKind() }); }
     catch (e) { return send(res, 500, { ok: false, storage: storageKind(), error: String(e && e.message).slice(0, 200) }); }
   }
@@ -228,7 +243,8 @@ export default async function handler(req, res) {
     if (parts[0] === 'a') return await agent(req, res, parts, q);
     return await coach(req, res, parts, q);
   } catch (e) {
-    console.error(e);
-    return send(res, 500, { error: 'Something went wrong on the server.' });
+    const ref = rid(4);
+    console.error(`[conductor ${ref}] ${req.method} ${String(req.url).replace(/cdr_[A-Za-z0-9_-]+/g, 'cdr_***')}`, e && e.stack ? e.stack : e);
+    return send(res, 500, { error: 'Something went wrong on the server.', ref, kind: (e && e.name) || 'Error' });
   }
 }
