@@ -797,7 +797,7 @@ playbook(el,st){
     <div class="hero"><div class="trn"><svg class="tring" viewBox="0 0 120 120" aria-hidden="true"><circle class="rb" cx="60" cy="60" r="54"/><circle class="rf" cx="60" cy="60" r="54"/></svg><span class="bob" id="bw">${done?'':av(id)}</span>${CAP}</div><div class="book" style="--c:${a.c}"><i></i><i></i><i></i><i></i><b>KEY INSIDE</b></div>${[0,1,2,3,4,5].map(k=>`<i class="kn" style="--k:${k};background:${DOM[DORDER[k]].c}"></i>`).join('')}</div>
     <div class="bench ${sel().length>5?'many':''}">${sel().map(x=>`<span class="slot ${S.joined[x]?'in':''}" data-id="${x}">${av(x)}</span>`).join('')}</div></div>`,
    done?`${n} is trained.`:`Give ${n} its playbook.`,done?'Already on the bench.':'One tap. Conductor handles the rest.',
-   `<button class="btn ${done?'':'pulse'}" id="go">${done?'Next':'Copy playbook'}</button><div class="lnks">${DESK.matches&&URLS[id]?`<a class="lnk" href="${URLS[id]}" target="_blank" rel="noopener">Open ${n} in a new tab</a>`:''}<button class="lnk" id="help">Where do I paste it?</button></div>`);
+   `<button class="btn ${done?'':'pulse'}" id="go">${done?'Next':'Copy playbook'}</button><div class="lnks">${DESK.matches&&URLS[id]?`<a class="lnk" href="${URLS[id]}" target="_blank" rel="noopener">Open ${n} in a new tab</a>`:''}<button class="lnk" id="help">How do I make it stick?</button></div>`);
   const h=$('h1',el),p=$('.txt p',el),hero=$('.hero',el),go=$('#go');
   const step=(k,ok)=>$$('.st',el).forEach(x=>{const v=+x.dataset.s;x.classList.toggle('on',v===k);x.classList.toggle('ok',v<=ok)});
   step(done?0:1,done?3:0); if(done)hero.classList.add('leaving');
@@ -819,7 +819,7 @@ playbook(el,st){
     let hit=false;
     const check=async()=>{await pull();if(S.joined[id]&&!hit){hit=true;clearInterval(iv);hero.classList.remove('waiting');$('.lnks',el).innerHTML='';train()}};
     $('#pst').onclick=()=>pasteSheet(id,check);
-    $('#cag').onclick=()=>{copy(playbookText(id));toastMsg('Playbook copied.')};
+    $('#cag').onclick=()=>{copy(playbookText(id));toastMsg('Playbook copied.');pasteHelp(id)};
     $('#sk').onclick=()=>{clearInterval(iv);S.skipped[id]=true;build();next()};
     clearInterval(iv);iv=setInterval(check,2000)};
   go.onclick=()=>{if(done)return next();copy(playbookText(id));sfx('ding');wait()};
@@ -1015,29 +1015,43 @@ function editOwner(d){
 const BASE=new Proxy({},{get:()=>0}),TH=[0,10,25,50,100];
 function lvl(id){const cnt=BASE[id]+S.wins.filter(w=>w.id===id).length,n=TH.filter(t=>cnt>=t).length,lo=TH[n-1],hi=TH[n]||cnt,d0=DORDER.find(d=>owners(d).includes(id))||AIS[id].d[0];
   return {cnt,n,t:n===1||!d0?'Rookie':`${DOM[d0].n} pro`,pct:n>=5?100:Math.round((cnt-lo)/(hi-lo)*100),left:n>=5?0:hi-cnt}}
-function playbookText(id){const a=AIS[id],B=location.origin+'/a/'+S.keys[id],c=S.codes[id];return `# Conductor playbook for ${a.n}
-You are ${a.n}, one member of ${S.name}'s AI team. Conductor keeps one shared list of who owns what, so two AIs never do the same job.
+const mcpUrl=id=>location.origin+'/mcp/'+S.keys[id];
+function playbookText(id){const a=AIS[id],B=location.origin+'/a/'+S.keys[id],c=S.codes[id];return `CONDUCTOR SKILL for ${a.n} (${S.name}'s AI team)
+Save this permanently as a skill, custom instruction or memory, so it applies in EVERY chat from now on, not only this one. Tell me where you saved it. If you cannot save it permanently, say so plainly.
 
-YOUR LINKS (your private key is inside them, never share them):
-- Check in: ${B}/checkin?good=LIST&reach=LIST
-- Team state: ${B}/state
-- Claim a task: ${B}/claim?mission=MISSION&task=SHORT+TITLE
-- Report done: ${B}/done?mission=MISSION&task=SHORT+TITLE&link=URL&minutes=N
+USE IT every time I ask you to do, make, send, change, schedule or draft something. Skip it for plain questions.
+
+EVERY TASK, in this order:
+1. Read the team state.
+2. You may READ anything. Only ACT on missions you own.
+3. Claim the task before you start. If the answer is BLOCKED or HOLD, stop and tell me.
+4. Do the work.
+5. Report it done. Then end your reply with "Conductor: reported".
+If the state says PAUSED or OFF, do not act. Tell me instead.
+
+HOW TO REACH CONDUCTOR (use the first that works):
+A. The Conductor connector tools, if installed. Connector URL: ${mcpUrl(id)}
+B. Open these links (private, never share them):
+- state: ${B}/state
+- claim: ${B}/claim?mission=MISSION&task=SHORT+TITLE
+- done: ${B}/done?mission=MISSION&task=SHORT+TITLE&link=URL&minutes=N
+- check in: ${B}/checkin?good=LIST&reach=LIST
+C. If you can do neither, end your reply with one line for me to paste:
+CONDUCTOR-CLAIM code=${c}; mission=...; task=...
+CONDUCTOR-DONE code=${c}; mission=...; task=...; link=...; minutes=...
 Missions: money, email, calendar, code, home, writing, social, research.
 
-RIGHT NOW:
-If you can open web links yourself, open the Check in link. Replace good= with what you are good at (comma-separated, from the missions list) and reach= with what you can access (inbox, calendar, files). Then tell me what Conductor answered.
-If you cannot open links, reply with exactly this one line, filled in, and I will paste it into Conductor:
-CONDUCTOR-CHECKIN code=${c}; good=...; reach=...
-
-FROM NOW ON, whenever I give you a task:
-1. Read the team state first (open the link, or ask me to paste today's update).
-2. You may READ anything. Only ACT on missions you own.
-3. Before starting, claim the task (open the claim link, or end your reply with: CONDUCTOR-CLAIM code=${c}; mission=...; task=...).
-4. When finished, report it (open the done link, or end your reply with: CONDUCTOR-DONE code=${c}; mission=...; task=...; link=...; minutes=...). Include a link to the result when one exists, and your honest estimate of minutes saved.
-5. If Conductor says PAUSED or OFF, do not act on team tasks. Tell me instead.`}
-function pasteHelp(id){const n=AIS[id].n;
-  const sh=openSheet(`<div class="big">${av(id)}</div><h1>Pasting into ${n}</h1><div class="rows">${[`Open ${n}`,'Start a new chat','Paste and send'].map((t,k)=>`<div class="row sm"><span class="num">${k+1}</span><div class="who">${t}</div></div>`).join('')}</div><p>${n} either checks in by itself, or gives you one line to paste back here.</p><div class="cta"><button class="btn">Got it</button></div>`);
+RIGHT NOW: save this skill, then check in. good = missions you are good at, reach = what you can access (inbox, calendar, files). No links or tools? Reply with: CONDUCTOR-CHECKIN code=${c}; good=...; reach=...`}
+const INSTALL={
+  chatgpt:['Ask it to save the skill to memory, or paste it into its custom instructions.','In its settings, turn on Developer mode under Apps and Connectors, then create a connector with the link.'],
+  claude:['Ask Claude to save it as a skill, or add it to a Project\'s instructions.','In Settings, open Connectors, add a custom connector and paste the link.'],
+  grok:['Paste it into Grok\'s custom instructions.','Open grok.com/connectors, choose New Connector, then Custom, and paste the link.'],
+  gemini:['Ask it to save it to Saved info, or put it in a Gem.','In Settings, open Gemini Apps Developer Mode and add a custom app with the link.'],
+  muse:['Ask Muse to remember it as a skill for every chat.','Ask Muse to build a custom connector from the links inside the skill.'],
+};
+function pasteHelp(id){const n=AIS[id].n,I=INSTALL[id]||[`Save it in ${n}'s permanent instructions or memory.`,`If ${n} supports custom connectors, add one with the link.`];
+  const sh=openSheet(`<div class="big">${av(id)}</div><h1>Teach ${n} for good</h1><div class="rows">${[`Paste the skill into ${n} and send`,I[0],'Optional, stronger: '+I[1]].map((t,k)=>`<div class="row sm"><span class="num">${k+1}</span><div class="who" style="white-space:normal">${t}</div></div>`).join('')}</div><p>Saved once, it applies in every chat. Menu names can differ by plan.</p><div class="cta"><button class="btn">Got it</button><button class="lnk" id="cml">Copy connector link</button></div>`);
+  $('#cml',sh).onclick=async()=>{if(!S.keys[id])await saveNow();if(!S.keys[id])return toastMsg('Could not make its key. Try again.');copy(mcpUrl(id));toastMsg('Connector link copied.')};
   $('.btn',sh).onclick=()=>sh.remove()}
 function connect(id,el){const n=AIS[id].n; let t=null,hit=false;
   const sh=openSheet(`<div class="big">${av(id)}</div><h1>Connect ${n}</h1><p>Copy its playbook, paste it into ${n}, then send.</p><div class="cta"><button class="btn">Copy playbook</button><button class="lnk" id="cps" style="display:none">It replied with a report? Paste it</button></div>`), b=$('.btn',sh);
@@ -1138,8 +1152,8 @@ function teamView(el){
      <div class="badges" style="justify-content:center;margin-top:8px">${AIS[id].reach.map(x=>`<span class="bdg new">Can reach: ${x}</span>`).join('')}</div>
      <div class="medals">${medals.map(([t,on])=>`<div class="medal ${on?'on':''}"><span>${ic('star',28,on?'#221C44':'#B9B4C9')}</span>${t}</div>`).join('')}</div>
      <p style="font-size:13px">Levels come at 10, 25, 50 and 100 finished items.</p>
-     <div class="cta"><button class="btn" data-a="upd">Brief ${AIS[id].n} &rarr;</button><button class="btn alt" data-a="fix">Copy its playbook again</button></div>`);
-    $$('.btn',sh).forEach(b=>b.onclick=()=>{sh.remove();if(b.dataset.a==='upd')brief(id);if(b.dataset.a==='fix'){copy(playbookText(id));toastMsg(`Playbook copied. Paste it into ${AIS[id].n}.`)}});
+     <div class="cta"><button class="btn" data-a="upd">Brief ${AIS[id].n} &rarr;</button><button class="btn alt" data-a="fix">Copy its skill again</button></div>`);
+    $$('.btn',sh).forEach(b=>b.onclick=()=>{sh.remove();if(b.dataset.a==='upd')brief(id);if(b.dataset.a==='fix'){copy(playbookText(id));toastMsg(`Skill copied. Paste it into ${AIS[id].n}.`);pasteHelp(id)}});
   });
   $('#mg').onclick=()=>{S.manage=true;teamView(el)};
   $('#tn').onclick=()=>{

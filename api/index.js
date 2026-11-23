@@ -90,14 +90,12 @@ function doDone(t, id, mission, task, link, minutes) {
 function parsePairs(s) { const o = {}; for (const part of s.split(';')) { const i = part.indexOf('='); if (i > 0) o[part.slice(0, i).trim().toLowerCase()] = part.slice(i + 1).trim(); } return o; }
 
 /* ---------- AI links: /a/<key>/<action> ---------- */
-async function agent(req, res, parts, q) {
-  const key = parts[1], action = (parts[2] || 'state').toLowerCase();
-  if (!key) return send(res, 404, 'Unknown link.');
+// One agent action. Returns { code, text }. Used by the links and by the connector.
+async function runAgent(key, action, p) {
+  if (!key) return { code: 404, text: 'Unknown link.' };
   const map = await getDoc(keyDoc(key));
-  if (!map) return send(res, 404, 'This Conductor key is not valid any more. Ask the coach for a new playbook.');
+  if (!map) return { code: 404, text: 'This Conductor key is not valid any more. Ask the coach for a new playbook.' };
   const { uid, id } = map.data; let out = '';
-  const body = req.method === 'POST' ? await readBody(req) : {};
-  const p = k => (q.get(k) != null ? q.get(k) : body[k]);
   const bad = t => !Array.isArray(t.sel) || !t.sel.includes(id) || !t.keys || t.keys[id] !== key;
   const act = t => {
     for (const m of ['joined', 'skipped', 'benched', 'rep', 'seen']) if (!t[m] || typeof t[m] !== 'object') t[m] = {};
@@ -107,22 +105,71 @@ async function agent(req, res, parts, q) {
     else if (action === 'done') out = doDone(t, id, p('mission'), p('task'), p('link'), p('minutes'));
     else { t.seen[id] = Date.now(); out = stateText(t, id); if (t.nudges && t.nudges[id]) delete t.nudges[id]; }
   };
-  let t;
   if (action === 'state') { // reading never depends on a write: answer from what is stored, then record the visit if we can
     const cur = await getDoc(teamDoc(uid));
-    if (!cur) return send(res, 404, 'Team not found.');
-    if (bad(cur.data)) return send(res, 200, 'This Conductor key is not valid any more.');
+    if (!cur) return { code: 404, text: 'Team not found.' };
+    if (bad(cur.data)) return { code: 200, text: 'This Conductor key is not valid any more.' };
     out = stateText(cur.data, id);
     try { await updateDoc(teamDoc(uid), act); } catch (e) { console.error('[conductor] state: could not record the visit', e && e.stack ? e.stack : e); }
-    return send(res, 200, out);
+    return { code: 200, text: out };
   }
+  let t;
   try { t = await updateDoc(teamDoc(uid), act); }
   catch (e) {
     if (!(e instanceof Busy)) throw e;
     console.error(`[conductor] ${action}: team file busy after retries`);
-    return send(res, 503, 'Conductor is busy right now. Nothing was recorded. Wait a few seconds and open this link again.');
+    return { code: 503, text: 'Conductor is busy right now. Nothing was recorded. Wait a few seconds and try again.' };
   }
-  if (!t) return send(res, 404, 'Team not found.');
+  if (!t) return { code: 404, text: 'Team not found.' };
+  return { code: 200, text: out };
+}
+async function agent(req, res, parts, q) {
+  const action = (parts[2] || 'state').toLowerCase();
+  const body = req.method === 'POST' ? await readBody(req) : {};
+  const r = await runAgent(parts[1], ['checkin', 'claim', 'done'].includes(action) ? action : 'state', k => (q.get(k) != null ? q.get(k) : body[k]));
+  return send(res, r.code, r.text);
+}
+
+/* ---------- connector: /mcp/<key> (Model Context Protocol, stateless Streamable HTTP) ---------- */
+const MCP_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
+const MISSION_ENUM = { type: 'string', enum: MISSIONS, description: 'Which mission the task belongs to.' };
+const MCP_RULES = 'Conductor coordinates this person\'s team of AI assistants so two AIs never do the same job. Use it on EVERY request where you would do, make, send, change, schedule or draft something (not for plain questions). Order: 1) conductor_state, 2) act only on missions you own (you may read anything), 3) conductor_claim before you start, 4) do the work, 5) conductor_done when finished. If the state says PAUSED or OFF, or a claim answers BLOCKED or HOLD, do not do the task and tell the person why.';
+const MCP_TOOLS = [
+  { name: 'conductor_state', title: 'Read team state', description: 'Read the Conductor team state: the on/off switch, which AI owns which mission, open tasks, recent finished work and messages from the coach. Call this FIRST, before starting any task for this person.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true } },
+  { name: 'conductor_checkin', title: 'Check in', description: 'Join the team or refresh your profile. Call once when first connected, and again if what you can do changes.', inputSchema: { type: 'object', properties: { good: { type: 'string', description: 'Up to 3 missions you are good at, comma-separated, from: ' + MISSIONS.join(', ') }, reach: { type: 'string', description: 'What you can access, comma-separated, for example: inbox, calendar, files' } }, additionalProperties: false } },
+  { name: 'conductor_claim', title: 'Claim a task', description: 'Claim a task BEFORE you start working on it, so no other AI does the same job. If the answer starts with BLOCKED or HOLD, do not do the task and tell the person.', inputSchema: { type: 'object', properties: { mission: MISSION_ENUM, task: { type: 'string', description: 'Short task title, under 90 characters.' } }, required: ['task'], additionalProperties: false } },
+  { name: 'conductor_done', title: 'Report a finished task', description: 'Report a task as finished, right after you complete it. Always call this when work you claimed is done.', inputSchema: { type: 'object', properties: { mission: MISSION_ENUM, task: { type: 'string', description: 'The same short title you claimed.' }, link: { type: 'string', description: 'https link to the result, if one exists.' }, minutes: { type: 'number', description: 'Your honest estimate of minutes saved for the person.' } }, required: ['task'], additionalProperties: false } },
+];
+async function mcp(req, res, parts) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type, accept, mcp-protocol-version, mcp-session-id, authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
+  if (req.method !== 'POST') { res.setHeader('Allow', 'POST, OPTIONS'); return send(res, 405, { jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Use POST.' } }); }
+  const key = parts[1], body = await readBody(req);
+  const one = async m => {
+    if (!m || m.jsonrpc !== '2.0' || typeof m.method !== 'string') return { jsonrpc: '2.0', id: (m && m.id) ?? null, error: { code: -32600, message: 'Invalid request.' } };
+    if (m.id === undefined) return null; // a notification: nothing to answer
+    const ok = result => ({ jsonrpc: '2.0', id: m.id, result });
+    if (m.method === 'initialize') {
+      const v = m.params && MCP_VERSIONS.includes(m.params.protocolVersion) ? m.params.protocolVersion : MCP_VERSIONS[0];
+      return ok({ protocolVersion: v, capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'conductor', title: 'Conductor', version: '1.0.0' }, instructions: MCP_RULES });
+    }
+    if (m.method === 'ping') return ok({});
+    if (m.method === 'tools/list') return ok({ tools: MCP_TOOLS });
+    if (m.method === 'resources/list') return ok({ resources: [] });
+    if (m.method === 'prompts/list') return ok({ prompts: [] });
+    if (m.method === 'tools/call') {
+      const name = m.params && m.params.name, a = (m.params && m.params.arguments) || {};
+      if (!MCP_TOOLS.some(t => t.name === name)) return { jsonrpc: '2.0', id: m.id, error: { code: -32602, message: 'Unknown tool.' } };
+      const r = await runAgent(key, name.replace('conductor_', ''), k => (a[k] == null ? null : String(a[k])));
+      return ok({ content: [{ type: 'text', text: r.text }], isError: r.code !== 200 });
+    }
+    return { jsonrpc: '2.0', id: m.id, error: { code: -32601, message: 'Method not found.' } };
+  };
+  if (Array.isArray(body)) { const out = (await Promise.all(body.slice(0, 20).map(one))).filter(Boolean); if (!out.length) { res.statusCode = 202; return res.end(); } return send(res, 200, out); }
+  const out = await one(body);
+  if (!out) { res.statusCode = 202; return res.end(); }
   return send(res, 200, out);
 }
 
@@ -269,9 +316,10 @@ export default async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://x'), q = url.searchParams;
     let p = q.get('__p'); if (p == null) p = url.pathname.replace(/^\/(api\/)?/, m => (m === '/api/' ? '' : ''));
-    if (url.pathname.startsWith('/a/') && q.get('__p') == null) p = url.pathname.slice(1);
+    if (/^\/(a|mcp)\//.test(url.pathname) && q.get('__p') == null) p = url.pathname.slice(1);
     const parts = p.split('/').filter(Boolean);
     if (parts[0] === 'a') return await agent(req, res, parts, q);
+    if (parts[0] === 'mcp') return await mcp(req, res, parts);
     return await coach(req, res, parts, q);
   } catch (e) {
     const ref = rid(4);
