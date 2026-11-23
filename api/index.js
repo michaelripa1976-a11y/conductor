@@ -2,7 +2,7 @@
 //   /api/*        the coach's browser (session cookie)
 //   /a/<key>/*    an AI's own links (the key is the AI's identity)
 import crypto from 'node:crypto';
-import { getDoc, putDoc, delDoc, updateDoc, Exists, Conflict, storageKind } from '../lib/store.js';
+import { getDoc, putDoc, delDoc, updateDoc, Exists, Conflict, Busy, storageKind } from '../lib/store.js';
 import { MISSIONS, MISSION_NAME, AI_NAME, AI_ORDER, toMission, toMissions, clean, cleanLink, aiName, live, owners, norm, newTeam, stateText } from '../lib/logic.js';
 
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
@@ -98,13 +98,30 @@ async function agent(req, res, parts, q) {
   const { uid, id } = map.data; let out = '';
   const body = req.method === 'POST' ? await readBody(req) : {};
   const p = k => (q.get(k) != null ? q.get(k) : body[k]);
-  const t = await updateDoc(teamDoc(uid), t => {
-    if (!t.sel.includes(id) || t.keys[id] !== key) { out = 'This Conductor key is not valid any more.'; return false; }
+  const bad = t => !Array.isArray(t.sel) || !t.sel.includes(id) || !t.keys || t.keys[id] !== key;
+  const act = t => {
+    for (const m of ['joined', 'skipped', 'benched', 'rep', 'seen']) if (!t[m] || typeof t[m] !== 'object') t[m] = {};
+    if (bad(t)) { out = 'This Conductor key is not valid any more.'; return false; }
     if (action === 'checkin') out = doCheckin(t, id, p('good'), p('reach'));
     else if (action === 'claim') out = doClaim(t, id, p('mission'), p('task'));
     else if (action === 'done') out = doDone(t, id, p('mission'), p('task'), p('link'), p('minutes'));
     else { t.seen[id] = Date.now(); out = stateText(t, id); if (t.nudges && t.nudges[id]) delete t.nudges[id]; }
-  });
+  };
+  let t;
+  if (action === 'state') { // reading never depends on a write: answer from what is stored, then record the visit if we can
+    const cur = await getDoc(teamDoc(uid));
+    if (!cur) return send(res, 404, 'Team not found.');
+    if (bad(cur.data)) return send(res, 200, 'This Conductor key is not valid any more.');
+    out = stateText(cur.data, id);
+    try { await updateDoc(teamDoc(uid), act); } catch (e) { console.error('[conductor] state: could not record the visit', e && e.stack ? e.stack : e); }
+    return send(res, 200, out);
+  }
+  try { t = await updateDoc(teamDoc(uid), act); }
+  catch (e) {
+    if (!(e instanceof Busy)) throw e;
+    console.error(`[conductor] ${action}: team file busy after retries`);
+    return send(res, 503, 'Conductor is busy right now. Nothing was recorded. Wait a few seconds and open this link again.');
+  }
   if (!t) return send(res, 404, 'Team not found.');
   return send(res, 200, out);
 }
@@ -132,11 +149,9 @@ async function coach(req, res, parts, q) {
           const m = `health/size-${rid(6)}.json`;
           await step(`size-${kb}kb`, async () => {
             await putDoc(m, { pad: 'x'.repeat(Math.round(kb * 1024)), v: 1 }, { create: true });
-            const r = await B.get(m, { access: 'private', useCache: false });
-            await new Response(r.stream).text();
-            const h = await B.head(m);
-            const info = { getEtag: r.blob.etag, headEtag: h.etag, same: r.blob.etag === h.etag, enc: r.headers.get('content-encoding') || 'none' };
-            try { await putDoc(m, { v: 2 }, { etag: r.blob.etag }); info.writeWithGetEtag = 'ok'; } catch (e) { info.writeWithGetEtag = e instanceof Conflict ? 'CONFLICT' : `${e && e.name}: ${String(e && e.message).slice(0, 120)}`; }
+            const r = await getDoc(m), h = await B.head(m);
+            const info = { getEtag: r.etag, headEtag: h.etag, same: r.etag === h.etag };
+            try { await putDoc(m, { v: 2 }, { etag: r.etag }); info.writeWithGetEtag = 'ok'; } catch (e) { info.writeWithGetEtag = e instanceof Conflict ? 'CONFLICT' : `${e && e.name}: ${String(e && e.message).slice(0, 120)}`; }
             await delDoc(m);
             return info;
           });
