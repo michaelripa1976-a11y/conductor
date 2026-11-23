@@ -2,7 +2,7 @@
 //   /api/*        the coach's browser (session cookie)
 //   /a/<key>/*    an AI's own links (the key is the AI's identity)
 import crypto from 'node:crypto';
-import { getDoc, putDoc, delDoc, updateDoc, Exists, storageKind } from '../lib/store.js';
+import { getDoc, putDoc, delDoc, updateDoc, Exists, Conflict, storageKind } from '../lib/store.js';
 import { MISSIONS, MISSION_NAME, AI_NAME, AI_ORDER, toMission, toMissions, clean, cleanLink, aiName, live, owners, norm, newTeam, stateText } from '../lib/logic.js';
 
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
@@ -126,6 +126,22 @@ async function coach(req, res, parts, q) {
       await step('updateDoc', async () => { const d = await updateDoc(n, d => { d.v = 4; }); return { v: d && d.v }; });
       await step('create-again-should-fail', async () => { try { await putDoc(n, { v: 9 }, { create: true }); return 'NOT REJECTED'; } catch (e) { return e instanceof Exists ? 'rejected as expected' : `other error ${e && e.name}: ${String(e && e.message).slice(0, 160)}`; } });
       await step('delete', async () => { await delDoc(n); });
+      if (q.get('sizes') && storageKind() === 'blob') { // does a conditional write still work as a document grows?
+        const B = await import('@vercel/blob');
+        for (const kb of [0.3, 1, 2, 4, 8, 20]) {
+          const m = `health/size-${rid(6)}.json`;
+          await step(`size-${kb}kb`, async () => {
+            await putDoc(m, { pad: 'x'.repeat(Math.round(kb * 1024)), v: 1 }, { create: true });
+            const r = await B.get(m, { access: 'private', useCache: false });
+            await new Response(r.stream).text();
+            const h = await B.head(m);
+            const info = { getEtag: r.blob.etag, headEtag: h.etag, same: r.blob.etag === h.etag, enc: r.headers.get('content-encoding') || 'none' };
+            try { await putDoc(m, { v: 2 }, { etag: r.blob.etag }); info.writeWithGetEtag = 'ok'; } catch (e) { info.writeWithGetEtag = e instanceof Conflict ? 'CONFLICT' : `${e && e.name}: ${String(e && e.message).slice(0, 120)}`; }
+            await delDoc(m);
+            return info;
+          });
+        }
+      }
       return send(res, 200, { storage: storageKind(), node: process.version, steps });
     }
     try { const n = 'health/ping.json'; await putDoc(n, { at: Date.now() }); const g = await getDoc(n); return send(res, 200, { ok: !!g, storage: storageKind() }); }
