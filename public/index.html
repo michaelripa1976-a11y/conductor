@@ -414,6 +414,32 @@ p{margin:8px 0 0;font-size:17px;font-weight:700;color:var(--mute);line-height:1.
 .fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
 .fgrid .m{height:74px;font-size:13px;border-radius:16px;box-shadow:0 4px 0 rgba(0,0,0,.2)}
 .m.foc{box-shadow:0 6px 0 rgba(0,0,0,.2),0 0 0 4px var(--bg),0 0 0 8px var(--yel)}
+.mv{display:flex;flex-direction:column;gap:10px;height:100%;min-height:0;text-align:left}
+.sheet .mv{height:min(76vh,640px)}
+.mvi{width:38px;height:38px;border-radius:13px;background:var(--c);display:grid;place-items:center;color:#fff;flex:none}
+.mvo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;line-height:1.25;flex:none}
+.mvo .av{width:30px;height:30px;flex:none}
+.mvs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:none}
+.mvs div{background:#fff;border-radius:16px;padding:8px 6px;text-align:center;font-size:11px;font-weight:800;box-shadow:0 3px 0 var(--line)}
+.mvs b{display:block;font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-size:22px;line-height:1.1}
+.mvw{background:var(--yel);border-radius:14px;padding:8px 12px;font-weight:800;font-size:13px;flex:none}
+.mvh{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;opacity:.6;flex:none;margin-top:2px}
+.mvb{display:flex;flex-direction:column;gap:6px;flex:none}
+.mvr{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px}
+.mvr .av{width:28px;height:28px;flex:none}
+.mvr .nm{width:38%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mvr .nm small{display:block;font-weight:700;font-size:10px;opacity:.65;overflow:hidden;text-overflow:ellipsis}
+.mvr .bar{flex:1;height:12px;border-radius:99px;background:var(--line);overflow:hidden}
+.mvr .bar i{display:block;height:100%;border-radius:99px}
+.mvd{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:74px;flex:none}
+.mvd span{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;min-width:0}
+.mvd i{display:block;width:100%;border-radius:8px 8px 4px 4px;min-height:4px}
+.mvd em{font-style:normal;font-size:11px;font-weight:900;height:13px;line-height:13px}
+.mvd small{font-size:10px;font-weight:800;opacity:.6}
+.mv .rows{overflow:auto}
+.xn{background:var(--ink);color:#fff;border-radius:99px;padding:1px 8px;font-size:12px;font-weight:900;margin-left:6px;white-space:nowrap}
+.m.pick{box-shadow:0 6px 0 rgba(0,0,0,.2),0 0 0 4px var(--bg),0 0 0 8px var(--ink)}
+
 .fst{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:50%;background:var(--yel);display:grid;place-items:center;animation:pop .4s}
 
 /* v16: playbook training flow */
@@ -660,7 +686,7 @@ function hydrate(st,all){
   for(const id of ORDER){const r=st.rep[id],a=AIS[id];a.d=((r&&r.d)||[]).filter(d=>DOM[d]);a.reach=r&&r.reach&&r.reach.length?r.reach.map(esc):['Nothing yet'];a.fresh=!a.d.length;
     a.say=a.d.length?`Good at ${a.d.map(d=>DOM[d].n.toLowerCase()).join(' and ')}.${r.reach&&r.reach.length?` I can reach ${esc(r.reach.join(', ').toLowerCase())}.`:''}`:"I'm new here. No history yet!"}
   AIS.other.n=esc(S.otherName||'Other');
-  const wins=st.log.slice().reverse().filter(w=>AIS[w.id]&&DOM[w.d]).map(w=>({k:w.k,d:w.d,id:w.id,text:esc(w.text)+(w.by?' ('+esc(w.by)+')':''),link:w.link,min:w.min||0,at:w.at}));
+  const wins=st.log.slice().reverse().filter(w=>AIS[w.id]&&DOM[w.d]).map(w=>({k:w.k,d:w.d,id:w.id,text:esc(w.text)+(w.by?' ('+esc(w.by)+')':''),by:w.by?esc(w.by):'',link:w.link,min:w.min||0,at:w.at}));
   if(S._known)for(const w of wins.filter(w=>!S._known.has(w.k)).reverse())S.fresh.push(w);
   S._known=new Set(wins.map(w=>w.k)); S.wins=wins;
 }
@@ -965,19 +991,11 @@ pad(el,st,inner){
   };
 
   $$('.m').forEach(t=>t.onclick=()=>{
-    const d=t.dataset.d,D=DOM[d],o=owners(d),names=o.map(id=>AIS[id].n);
-    let big=`<span class="ico" style="--c:${D.c}">${ic(d,36)}</span>${o.map(id=>av(id)).join('')}`,h,p,btn;
-    if(S.mode==='off'){h='Conductor is off.';p='No AI is following it right now.';btn=`<button class="btn grn" data-a="on">Turn it ON</button>`}
-    else if(S.mode==='pause'){h='Conductor is paused.';p='AIs can still read. Nobody acts.';btn=`<button class="btn grn" data-a="on">Resume</button>`}
-    else if(!o.length){h=`Nobody owns ${D.n} yet.`;p='Any AI can read it. None will act.';btn=`<button class="btn" data-a="edit">Pick an owner</button>`}
-    else{h=o.length>1?`${names.join(' and ')} share ${D.n}.`:`${names[0]} owns ${D.n}.`;p=`Every AI can read it. Only ${o.length>1?'they':names[0]} can act.`;
-      btn=o.map(id=>`<button class="btn" style="background:${AIS[id].c};box-shadow:0 6px 0 rgba(0,0,0,.25)" data-a="open" data-id="${id}">Brief ${AIS[id].n} &rarr;</button>`).join('')+'<button class="btn alt" data-a="edit">Change owner</button>'}
-    $('#app').insertAdjacentHTML('beforeend',`<div class="sheet" role="dialog" aria-modal="true" aria-label="${D.n} mission"><div><div class="big">${big}</div><h1>${h}</h1><p>${p}</p><div class="cta">${btn}</div></div></div>`);
-    const sh=$('.sheet'); const close=()=>sh.remove();
-    sh.onclick=e=>{if(e.target===sh)close()};
-    $$('.btn',sh).forEach(b=>b.onclick=()=>{const a=b.dataset.a;close();if(a==='on')setM('on');if(a==='edit')editOwner(d);if(a==='open')brief(b.dataset.id)});
-    $('.btn',sh).focus();
+    const d=t.dataset.d,h=$('#cH');
+    if(DESK.matches&&h){S.fd=S.fd===d?null:d;histView(h);syncPick();return}
+    const sh=openSheet(`<div id="mvs"></div>`);missionView($('#mvs',sh),d,true);
   });
+  syncPick();
   bindNav();
 }
 };
@@ -1187,7 +1205,44 @@ function teamView(el){
 }
 const LINKS={money:'the receipt',email:'the email thread',calendar:'the calendar event',code:'the code change',home:'the order',writing:'the draft',social:'the posts',research:null};
 const OLD={money:'Sent 3 invoices',email:'Replied to the landlord',calendar:'Moved the dentist visit',code:'Updated the website',home:'Scheduled the plumber',writing:'Polished the proposal',social:'Answered 6 comments',research:'Found 3 flight options'};
+const nrm=s=>s.toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+function groupWins(list){const out=[],ix={};for(const w of list){const k=w.id+'|'+w.d+'|'+nrm(w.text);if(ix[k]){ix[k].n++;ix[k].min+=w.min||0;ix[k].first=Math.min(ix[k].first,w.at)}else out.push(ix[k]={...w,min:w.min||0,n:1,first:w.at})}return out}
+const syncPick=()=>$$('.grid .m').forEach(t=>t.classList.toggle('pick',!!S.fd&&t.dataset.d===S.fd));
+function winSheet(w){
+  const D=DOM[w.d],a=AIS[w.id].n,L=w.link&&/^https?:\/\//i.test(w.link)?w.link:'',when=dayTxt(w.at);
+  const sh=openSheet(`<div class="big">${av(w.id)}<span class="ico" style="--c:${D.c}">${ic(w.d,36)}</span></div><h1>${w.text}</h1><p>${a} · ${D.n} · ${when}${w.n>1?` · reported ${w.n} times since ${dayTxt(w.first)}`:''}${w.min?` · ${w.min} min saved`:''}${L?'':`. ${a} did not report a link for this one.`}</p><div class="cta">${L?`<a class="btn" href="${esc(L)}" target="_blank" rel="noopener noreferrer">Open the result &rarr;</a>`:''}<button class="btn ${L?'alt':''}" data-a="ask">Ask ${a} what it did</button></div>`);
+  $$('.btn',sh).forEach(b=>b.onclick=()=>{sh.remove();if(b.dataset.a!=='ask')return;copy(`You reported this to Conductor on ${new Date(w.at).toLocaleString()}: "${w.text}" under ${D.n}. Show me what you did and anything I should know.`);copiedSheet(w.id,'Question copied.',`Paste it into ${a} to ask about this item.`)});
+}
+const winRow=(w,k)=>`<button class="row sm" data-k="${k}" style="text-align:left;width:100%">${av(w.id)}<span style="flex:1;min-width:0;display:block"><span class="who" style="display:block">${w.text}${w.n>1?`<span class="xn">&times;${w.n}</span>`:''}</span><span class="say" style="display:block">${AIS[w.id].n} · ${DOM[w.d].n} · ${w.n>1?'last ':''}${dayTxt(w.at)}</span></span><span class="ok" style="animation:none;margin-left:0">${ic('check',16)}</span></button>`;
+/* One mission at a glance: who owns it, who worked on it, when, and what. */
+function missionView(el,d,sheet){
+  const D=DOM[d],W=S.wins.filter(w=>w.d===d),t0=now()-7*864e5,wk=W.filter(w=>w.at>=t0),o=owners(d),names=o.map(id=>AIS[id].n);
+  const by={};wk.forEach(w=>{const b=by[w.id]=by[w.id]||{n:0,bots:{}};b.n++;if(w.by)b.bots[w.by]=(b.bots[w.by]||0)+1});
+  const who=Object.keys(by).sort((a,b)=>by[b].n-by[a].n),top=Math.max(1,...who.map(id=>by[id].n));
+  const sod=new Date(now());sod.setHours(0,0,0,0);const days=[];for(let k=6;k>=0;k--){const a=sod.getTime()-k*864e5;days.push({a,n:W.filter(w=>w.at>=a&&w.at<a+864e5).length})}
+  const mx=Math.max(1,...days.map(x=>x.n)),open=(S.tasks||[]).filter(x=>x.d===d&&AIS[x.id]),min=wk.reduce((n,w)=>n+(w.min||0),0);
+  const wait=open.filter(x=>x.hold).length+(S.needs||[]).filter(n=>n.u===d).length,g=groupWins(W).slice(0,40);
+  const ownTxt=S.mode==='off'?'Conductor is off. No AI is following it.':S.mode==='pause'?'Paused. AIs can read, nobody acts.':!o.length?'Nobody owns this yet. Any AI can read it, none will act.':`${names.join(' and ')} ${o.length>1?'share':'owns'} it. Everyone else can only read.`;
+  const act=S.mode!=='on'?`<button class="btn grn" data-a="on" style="height:50px;font-size:16px">${S.mode==='off'?'Turn it ON':'Resume'}</button>`:(o.length?`<button class="btn" data-a="brief" style="height:50px;font-size:16px">Brief ${AIS[o[0]].n}</button>`:'')+`<button class="btn ${o.length?'alt':''}" data-a="edit" style="height:50px;font-size:16px">${o.length?'Change owner':'Pick an owner'}</button>`;
+  el.innerHTML=`<div class="mv"><div class="padh"><span class="mvi" style="--c:${D.c}">${ic(d,22)}</span><h1>${D.n}</h1>${sheet?'':'<button class="chip" id="mvx">Back to Done</button>'}</div>
+   <div class="mvo">${o.map(id=>av(id)).join('')}<span>${ownTxt}</span></div>
+   <div class="mvs"><div><b>${wk.length}</b>done this week</div><div><b>${hm(min)}</b>time back</div><div><b>${open.length}</b>open now</div></div>
+   ${wait?`<div class="mvw">${wait} waiting on your decision. Check the bell on the Launch Pad.</div>`:''}
+   <div class="mvh">Who · last 7 days</div>
+   <div class="mvb">${who.length?who.map(id=>{const bots=Object.entries(by[id].bots).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`${n} ${c}`).join(', ');return `<div class="mvr">${av(id)}<span class="nm">${AIS[id].n}${bots?`<small>${bots}</small>`:''}</span><span class="bar"><i style="width:${Math.round(by[id].n/top*100)}%;background:${D.c}"></i></span><b>${by[id].n}</b></div>`}).join(''):'<div class="mvr" style="opacity:.7">No finished work this week.</div>'}</div>
+   <div class="mvh">When</div>
+   <div class="mvd" role="img" aria-label="Finished items per day, last 7 days: ${days.map(x=>x.n).join(', ')}">${days.map(x=>`<span><em>${x.n||''}</em><i style="height:${x.n?Math.max(14,Math.round(x.n/mx*100)):0}%;background:${x.n?D.c:'var(--line)'}"></i><small>${new Date(x.a).toLocaleDateString(undefined,{weekday:'narrow'})}</small></span>`).join('')}</div>
+   <div class="mvh">What</div>
+   <div class="rows" id="mvl" style="flex:1;min-height:0">${open.map(x=>`<div class="row sm">${av(x.id)}<span style="flex:1;min-width:0;display:block"><span class="who" style="display:block">${esc(x.title)}</span><span class="say" style="display:block">${x.hold?'On hold, needs your decision':'In progress'} · ${AIS[x.id].n}${x.by?' ('+esc(x.by)+')':''} · ${agoTxt(x.at)}</span></span></div>`).join('')}${g.map(winRow).join('')}${open.length||g.length?'':`<p style="text-align:center;margin-top:16px">Nothing here yet. Work lands when an AI reports it under ${D.n}.</p>`}</div>
+   <div style="display:flex;gap:8px;flex:none">${act}</div></div>`;
+  $$('#mvl button.row',el).forEach(r=>r.onclick=()=>winSheet(g[+r.dataset.k]));
+  const shut=()=>{if(sheet){const sh=el.closest('.sheet');if(sh)sh.remove()}};
+  $$('[data-a]',el).forEach(b=>b.onclick=()=>{const a=b.dataset.a;shut();if(a==='on'){S.mode='on';saveNow();sfx('on');go(S.i)}if(a==='edit')editOwner(d);if(a==='brief')brief(o[0])});
+  const x=$('#mvx',el);if(x)x.onclick=()=>{S.fd=null;histView(el);syncPick()};
+  if(!sheet)syncPick();
+}
 function histView(el){
+  if(S.fd&&el.id==='cH'&&DESK.matches&&DOM[S.fd])return missionView(el,S.fd);
   const team=sel(), max=1e9;
   const all=S.wins.map(w=>({...w,when:dayTxt(w.at)}));
   el.innerHTML=`<div class="padh"><h1>Done</h1><button class="chip" id="qz" aria-pressed="${S.quiet}">Celebrations: ${S.quiet?'Quiet':'Big'}</button>${sndBtn()}</div>
@@ -1198,12 +1253,9 @@ function histView(el){
   const draw=()=>{
     const q=S.q.toLowerCase(), m=all.filter(w=>(!S.fa||w.id===S.fa)&&(!q||[w.text,AIS[w.id].n,DOM[w.d].n,w.when].join(' ').toLowerCase().includes(q)));
     $('#hc').textContent=m.length>max?`Showing ${max} of ${m.length}`:`${m.length} item${m.length===1?'':'s'}`;
-    $('#hl').innerHTML=m.length?m.map((w,k)=>`<button class="row sm" data-k="${k}" style="text-align:left;width:100%">${av(w.id)}<span style="flex:1;min-width:0;display:block"><span class="who" style="display:block">${w.text}</span><span class="say" style="display:block">${AIS[w.id].n} · ${DOM[w.d].n} · ${w.when}</span></span><span class="ok" style="animation:none;margin-left:0">${ic('check',16)}</span></button>`).join(''):`<p style="text-align:center;margin-top:30px">${all.length?'Nothing matches.':'Nothing yet. Finished items land here when your AIs report them.'}</p>`;
-    $$('#hl .row').forEach(r=>r.onclick=()=>{
-      const w=m[+r.dataset.k],D=DOM[w.d],a=AIS[w.id].n,L=w.link&&/^https?:\/\//i.test(w.link)?w.link:'';
-      const sh=openSheet(`<div class="big">${av(w.id)}<span class="ico" style="--c:${D.c}">${ic(w.d,36)}</span></div><h1>${w.text}</h1><p>${a} · ${D.n} · ${w.when}${w.min?` · ${w.min} min saved`:''}${L?'':`. ${a} did not report a link for this one.`}</p><div class="cta">${L?`<a class="btn" href="${esc(L)}" target="_blank" rel="noopener noreferrer">Open the result &rarr;</a>`:''}<button class="btn ${L?'alt':''}" data-a="ask">Ask ${a} what it did</button></div>`);
-      $$('.btn',sh).forEach(b=>b.onclick=()=>{sh.remove();if(b.dataset.a!=='ask')return;copy(`You reported this to Conductor on ${new Date(w.at).toLocaleString()}: "${w.text}" under ${D.n}. Show me what you did and anything I should know.`);copiedSheet(w.id,'Question copied.',`Paste it into ${a} to ask about this item.`)});
-    });
+    const g=groupWins(m);
+    $('#hl').innerHTML=g.length?g.map(winRow).join(''):`<p style="text-align:center;margin-top:30px">${all.length?'Nothing matches.':'Nothing yet. Finished items land here when your AIs report them.'}</p>`;
+    $$('#hl .row').forEach(r=>r.onclick=()=>winSheet(g[+r.dataset.k]));
   };
   draw();
   $('#pr').onclick=()=>pasteSheet(null,()=>{DESK.matches?histView(el):histView(el)});
