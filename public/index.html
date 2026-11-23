@@ -578,7 +578,7 @@ const BODY={
   openclaw:c=>`<path d="M10 20c-8-8-2-18 6-16-4 4-2 8 2 10zM54 20c8-8 2-18-6-16 4 4 2 8-2 10z" fill="${c}"/><rect x="8" y="14" width="48" height="44" rx="18" fill="${c}"/>`,
   other:c=>`<path d="M32 2v10M27 7h10" stroke="${c}" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="37" r="24" fill="${c}"/>`
 };
-const LOGOS={};
+const LOGOS={chatgpt:'logos/chatgpt.png',claude:'logos/claude.png',grok:'logos/grok.png',gemini:'logos/gemini.png',muse:'logos/muse.png',perplexity:'logos/perplexity.png',devin:'logos/devin.png',victor:'logos/victor.png',copilot:'logos/copilot.png',hermes:'logos/hermes.png',openclaw:'logos/openclaw.png'};
 function av(id,cls=''){
   const a=AIS[id];
   if(LOGOS[id])return `<span class="av lg ${cls}" role="img" aria-label="${a.n}"><img src="${LOGOS[id]}" alt=""></span>`;
