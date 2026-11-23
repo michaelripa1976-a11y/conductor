@@ -660,7 +660,7 @@ function hydrate(st,all){
   for(const id of ORDER){const r=st.rep[id],a=AIS[id];a.d=((r&&r.d)||[]).filter(d=>DOM[d]);a.reach=r&&r.reach&&r.reach.length?r.reach.map(esc):['Nothing yet'];a.fresh=!a.d.length;
     a.say=a.d.length?`Good at ${a.d.map(d=>DOM[d].n.toLowerCase()).join(' and ')}.${r.reach&&r.reach.length?` I can reach ${esc(r.reach.join(', ').toLowerCase())}.`:''}`:"I'm new here. No history yet!"}
   AIS.other.n=esc(S.otherName||'Other');
-  const wins=st.log.slice().reverse().filter(w=>AIS[w.id]&&DOM[w.d]).map(w=>({k:w.k,d:w.d,id:w.id,text:esc(w.text),link:w.link,min:w.min||0,at:w.at}));
+  const wins=st.log.slice().reverse().filter(w=>AIS[w.id]&&DOM[w.d]).map(w=>({k:w.k,d:w.d,id:w.id,text:esc(w.text)+(w.by?' ('+esc(w.by)+')':''),link:w.link,min:w.min||0,at:w.at}));
   if(S._known)for(const w of wins.filter(w=>!S._known.has(w.k)).reverse())S.fresh.push(w);
   S._known=new Set(wins.map(w=>w.k)); S.wins=wins;
 }
@@ -1017,14 +1017,14 @@ function lvl(id){const cnt=BASE[id]+S.wins.filter(w=>w.id===id).length,n=TH.filt
   return {cnt,n,t:n===1||!d0?'Rookie':`${DOM[d0].n} pro`,pct:n>=5?100:Math.round((cnt-lo)/(hi-lo)*100),left:n>=5?0:hi-cnt}}
 const mcpUrl=id=>location.origin+'/mcp/'+S.keys[id];
 function playbookText(id){const a=AIS[id],B=location.origin+'/a/'+S.keys[id],c=S.codes[id];return `CONDUCTOR SKILL for ${a.n} (${S.name}'s AI team)
-Save this permanently as a skill, custom instruction or memory, so it applies in EVERY chat from now on, not only this one. Tell me where you saved it. If you cannot save it permanently, say so plainly.
+${id==='grok'?`Save the RULES below with UpdateSkill as a user-library skill named conductor-playbook, so every Grok bot on this account shares it. Leave every link, key and code out of the shared skill: keep those only in your own private memory. Then message each of my other bots to load conductor-playbook before any task, and tell me which bots you reached and which you could not. All bots reach Conductor through the Conductor connector.`:`Save this permanently as a skill, custom instruction or memory, so it applies in EVERY chat from now on, not only this one. Tell me where you saved it. If you cannot save it permanently, say so plainly.`}
 
 USE IT every time I ask you to do, make, send, change, schedule or draft something. Skip it for plain questions.
 
 EVERY TASK, in this order:
 1. Read the team state.
 2. You may READ anything. Only ACT on missions you own.
-3. Claim the task before you start. If the answer is BLOCKED or HOLD, stop and tell me.
+3. Claim the task before you start. If you are one of several bots, name yourself in the bot field. If the answer is BLOCKED or HOLD, stop and tell me.
 4. Do the work.
 5. Report it done. Then end your reply with "Conductor: reported".
 If the state says PAUSED or OFF, do not act. Tell me instead.
@@ -1038,8 +1038,8 @@ HOW TO REACH CONDUCTOR (use the first that works):
 A. The Conductor connector tools, if installed. Connector URL: ${mcpUrl(id)}
 B. Open these links (private, never share them):
 - state: ${B}/state
-- claim: ${B}/claim?mission=MISSION&task=SHORT+TITLE
-- done: ${B}/done?mission=MISSION&task=SHORT+TITLE&link=URL&minutes=N
+- claim: ${B}/claim?mission=MISSION&task=SHORT+TITLE&bot=YOUR+BOT+NAME
+- done: ${B}/done?mission=MISSION&task=SHORT+TITLE&link=URL&minutes=N&bot=YOUR+BOT+NAME
 - check in: ${B}/checkin?good=LIST&reach=LIST
 C. If you can do neither, end your reply with one line for me to paste:
 CONDUCTOR-CLAIM code=${c}; mission=...; task=...
@@ -1050,7 +1050,7 @@ RIGHT NOW: save this skill, then check in. good = missions you are good at, reac
 const INSTALL={
   chatgpt:['Ask it to save the skill to memory, or paste it into its custom instructions.','In its settings, turn on Developer mode under Apps and Connectors, then create a connector with the link.'],
   claude:['Ask Claude to save it as a skill, or add it to a Project\'s instructions.','In Settings, open Connectors, add a custom connector and paste the link.'],
-  grok:['Paste it into Grok\'s custom instructions.','Open grok.com/connectors, choose New Connector, then Custom, and paste the link.'],
+  grok:['Grok saves the rules as a shared skill for all your Grok bots and messages them.','Open grok.com/connectors, choose New Connector, then Custom, and paste the link.'],
   gemini:['Ask it to save it to Saved info, or put it in a Gem.','In Settings, open Gemini Apps Developer Mode and add a custom app with the link.'],
   muse:['Ask Muse to remember it as a skill for every chat.','Ask Muse to build a custom connector from the links inside the skill.'],
 };
