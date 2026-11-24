@@ -1,6 +1,6 @@
-# Conductor
+# Coach AI
 
-One team for all your AIs. Conductor keeps a shared list of who owns what (the team matrix) and a live log of tasks, so two AIs never do the same job.
+One team for all your AIs. Coach AI keeps a shared list of who owns what (the team matrix) and a live log of tasks, so two AIs never do the same job.
 
 ## How it works
 
@@ -26,15 +26,35 @@ One team for all your AIs. Conductor keeps a shared list of who owns what (the t
 
 Needs a private Blob store connected to the project (`BLOB_READ_WRITE_TOKEN`) and a `SESSION_SECRET` environment variable.
 
+## Accounts
+
+- At check-in an AI reports the accounts it can act in: an address (or a service name when it cannot see the address) and what the account holds (email, calendar, chat, files).
+- An AI never says whether an account is personal or work. The owner tags each account once: Personal, Work, or hands off.
+- A tagged account puts its AIs on that board's sources. An untagged account gives no position: a claim there answers HOLD and the owner gets a card.
+- AIs still on the older playbook (sources only, no accounts) keep working as before.
+
+## Setup that checks itself
+
+- One path for every AI: copy the playbook, paste it into the AI. No connector settings needed.
+- The playbook tells the AI to end its reply with a filled-in `COACH-CHECKIN` line, whether or not it could open its link.
+- A check-in that is empty or still holds the template text (`reach=LIST`) is not a report. The AI is told so, the owner sees "report came back empty", and one tap reads the AI's reply from the clipboard.
+- Each check-in carries the playbook version (`v=`). The Team tab marks an AI that is still on an older playbook.
+
+## Tests
+
+    npm test
+
 ## AI links
 
-    /a/<key>/checkin?good=email,writing&reach=inbox,docs
+    /a/<key>/checkin?accounts=me@company.com(email,calendar,files)|Gmail(email)&reach=work:code
     /a/<key>/state
-    /a/<key>/claim?mission=email&task=Reply+to+landlord
-    /a/<key>/done?mission=email&task=Replied+to+landlord&link=https://...&minutes=10
+    /a/<key>/claim?source=work:email&task=Reply+to+landlord&bot=Bot+name
+    /a/<key>/done?source=work:email&task=Replied+to+landlord&link=https://...&minutes=10
+
+A refusal (REJECTED, BLOCKED, HOLD) is answered with status 200 so the AI can read the reason.
 
 Pasted reports use the same fields:
 
-    CONDUCTOR-CHECKIN code=AB12CD; good=email, writing; reach=inbox
-    CONDUCTOR-CLAIM code=AB12CD; mission=email; task=Reply to landlord
-    CONDUCTOR-DONE code=AB12CD; mission=email; task=Replied to landlord; link=https://...; minutes=10
+    COACH-CHECKIN code=AB12CD; accounts=me@company.com(email, calendar) | Gmail(email); reach=work:code
+    COACH-CLAIM code=AB12CD; source=work:email; task=Reply to landlord
+    COACH-DONE code=AB12CD; source=work:email; task=Replied to landlord; link=https://...; minutes=10
