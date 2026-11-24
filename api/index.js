@@ -101,25 +101,61 @@ function doDone(t, id, mission, task, link, minutes, bot) {
 function parsePairs(s) { const o = {}; for (const part of s.split(';')) { const i = part.indexOf('='); if (i > 0) o[part.slice(0, i).trim().toLowerCase()] = part.slice(i + 1).trim(); } return o; }
 
 /* ---------- AI links: /a/<key>/<action> ---------- */
+/* ---------- which key did the caller send? ---------- */
+const KEY_RE = /^cdr_[A-Za-z0-9_-]{16,80}$/;
+// Trim, URL-decode once, and pull the cdr_ token out if a whole link or "Bearer ..." was pasted.
+function cleanKey(raw) {
+  let k = String(raw == null ? '' : raw).trim();
+  if (/%[0-9a-f]{2}/i.test(k)) { try { k = decodeURIComponent(k).trim(); } catch (e) {} }
+  const m = k.match(/cdr_[A-Za-z0-9_-]+/);
+  return m ? m[0] : k.replace(/^bearer\s+/i, '').trim();
+}
+const hint = k => `${String(k).slice(0, 6)}… (${String(k).length} chars)`; // safe to log: never the whole key
+// Order: Authorization: Bearer, X-Conductor-Key, ?key=, then the key in the path.
+function findKey(req, q, pathKey) {
+  const h = req.headers || {}, auth = String(h.authorization || '');
+  const raw = [/^bearer\s+/i.test(auth) ? auth.replace(/^bearer\s+/i, '') : '', h['x-conductor-key'], q.get('key'), pathKey].find(v => v != null && String(v).trim() !== '');
+  if (raw == null) return { code: 401, text: 'No key sent. Send your Conductor key as "Authorization: Bearer <key>".' };
+  const key = cleanKey(raw);
+  if (!KEY_RE.test(key)) { console.warn(`[conductor] key format not recognized: ${hint(key)}`); return { code: 401, text: 'Key format not recognized. A Conductor key starts with cdr_. Send only the key, with nothing around it.' }; }
+  return { key };
+}
+// Best-effort brake on guessing. Counts per server instance, so it slows a burst but is not a hard limit.
+const FAILS = new Map();
+const ipOf = req => String((req.headers && req.headers['x-forwarded-for']) || (req.socket && req.socket.remoteAddress) || '?').split(',')[0].trim();
+function blocked(req) { const f = FAILS.get(ipOf(req)); return !!f && f.n >= 20 && Date.now() - f.t < 10 * 60e3; }
+function noteFail(req, key) {
+  const ip = ipOf(req), f = FAILS.get(ip); const now = Date.now();
+  if (!f || now - f.t > 10 * 60e3) FAILS.set(ip, { n: 1, t: now }); else f.n++;
+  if (FAILS.size > 5000) FAILS.clear();
+  console.warn(`[conductor] key not found or revoked: ${hint(key)}`);
+}
+const NOT_FOUND = 'Key not found or revoked. Ask the owner for a new key.';
+
 // One agent action. Returns { code, text }. Used by the links and by the connector.
 async function runAgent(key, action, p) {
-  if (!key) return { code: 404, text: 'Unknown link.' };
   const map = await getDoc(keyDoc(key));
-  if (!map) return { code: 404, text: 'This Conductor key is not valid any more. Ask the coach for a new playbook.' };
+  if (!map) return { code: 404, text: NOT_FOUND, miss: true };
   const { uid, id } = map.data; let out = '';
   const bad = t => !Array.isArray(t.sel) || !t.sel.includes(id) || !t.keys || t.keys[id] !== key;
   const act = t => {
     for (const m of ['joined', 'skipped', 'benched', 'rep', 'seen']) if (!t[m] || typeof t[m] !== 'object') t[m] = {};
-    if (bad(t)) { out = 'This Conductor key is not valid any more.'; return false; }
+    if (bad(t)) { out = NOT_FOUND; return false; }
     if (action === 'checkin') out = doCheckin(t, id, p('good'), p('reach'));
     else if (action === 'claim') out = doClaim(t, id, p('mission'), p('task'), p('bot'));
     else if (action === 'done') out = doDone(t, id, p('mission'), p('task'), p('link'), p('minutes'), p('bot'));
     else { join(t, id); t.seen[id] = Date.now(); out = stateText(t, id); if (t.nudges && t.nudges[id]) delete t.nudges[id]; }
   };
+  if (action === 'whoami') { // "test my key": who am I, on whose team. Changes nothing.
+    const cur = await getDoc(teamDoc(uid));
+    if (!cur || bad(cur.data)) return { code: 404, text: NOT_FOUND, miss: true };
+    const t = cur.data;
+    return { code: 200, json: { ok: true, agent: aiName(t, id), team: t.team || `Team ${t.name}`, owner: t.name, switch: t.mode, checkedIn: !!(t.joined && t.joined[id]), missions: MISSIONS.filter(d => owners(t, d).includes(id)) } };
+  }
   if (action === 'state') { // reading never depends on a write: answer from what is stored, then record the visit if we can
     const cur = await getDoc(teamDoc(uid));
     if (!cur) return { code: 404, text: 'Team not found.' };
-    if (bad(cur.data)) return { code: 200, text: 'This Conductor key is not valid any more.' };
+    if (bad(cur.data)) return { code: 404, text: NOT_FOUND, miss: true };
     out = stateText(cur.data, id);
     try { await updateDoc(teamDoc(uid), act); } catch (e) { console.error('[conductor] state: could not record the visit', e && e.stack ? e.stack : e); }
     return { code: 200, text: out };
@@ -132,13 +168,18 @@ async function runAgent(key, action, p) {
     return { code: 503, text: 'Conductor is busy right now. Nothing was recorded. Wait a few seconds and try again.' };
   }
   if (!t) return { code: 404, text: 'Team not found.' };
+  if (out === NOT_FOUND) return { code: 404, text: out, miss: true };
   return { code: out.startsWith('REJECTED.') ? 400 : 200, text: out };
 }
-async function agent(req, res, parts, q) {
-  const action = (parts[2] || 'state').toLowerCase();
+// /a/<key>/<action> (key in the link) and /api/agent/<action> (key in a header or ?key=).
+async function agent(req, res, action, q, pathKey) {
+  if (blocked(req)) return send(res, 429, 'Too many failed key checks from this address. Wait ten minutes and try again.');
+  const k = findKey(req, q, pathKey); if (!k.key) return send(res, k.code, k.text);
   const body = req.method === 'POST' ? await readBody(req) : {};
-  const r = await runAgent(parts[1], ['checkin', 'claim', 'done'].includes(action) ? action : 'state', k => (q.get(k) != null ? q.get(k) : body[k]));
-  return send(res, r.code, r.text);
+  action = String(action || 'state').toLowerCase();
+  const r = await runAgent(k.key, ['checkin', 'claim', 'done', 'whoami'].includes(action) ? action : 'state', n => (q.get(n) != null ? q.get(n) : body[n]));
+  if (r.miss) noteFail(req, k.key);
+  return send(res, r.code, r.json || r.text);
 }
 
 /* ---------- connector: /mcp/<key> (Model Context Protocol, stateless Streamable HTTP) ---------- */
@@ -154,11 +195,14 @@ const MCP_TOOLS = [
 ];
 async function mcp(req, res, parts) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'content-type, accept, mcp-protocol-version, mcp-session-id, authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type, accept, mcp-protocol-version, mcp-session-id, authorization, x-conductor-key');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST, OPTIONS'); return send(res, 405, { jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Use POST.' } }); }
-  const key = parts[1], body = await readBody(req);
+  if (blocked(req)) return send(res, 429, { jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Too many failed key checks. Wait ten minutes.' } });
+  const k = findKey(req, new URLSearchParams((req.url || '').split('?')[1] || ''), parts[1] || null);
+  if (!k.key) return send(res, k.code, { jsonrpc: '2.0', id: null, error: { code: -32001, message: k.text } });
+  const key = k.key, body = await readBody(req);
   const one = async m => {
     if (!m || m.jsonrpc !== '2.0' || typeof m.method !== 'string') return { jsonrpc: '2.0', id: (m && m.id) ?? null, error: { code: -32600, message: 'Invalid request.' } };
     if (m.id === undefined) return null; // a notification: nothing to answer
@@ -175,6 +219,7 @@ async function mcp(req, res, parts) {
       const name = m.params && m.params.name, a = (m.params && m.params.arguments) || {};
       if (!MCP_TOOLS.some(t => t.name === name)) return { jsonrpc: '2.0', id: m.id, error: { code: -32602, message: 'Unknown tool.' } };
       const r = await runAgent(key, name.replace('conductor_', ''), k => (a[k] == null ? null : String(a[k])));
+      if (r.miss) noteFail(req, key);
       return ok({ content: [{ type: 'text', text: r.text }], isError: r.code !== 200 });
     }
     return { jsonrpc: '2.0', id: m.id, error: { code: -32601, message: 'Method not found.' } };
@@ -284,6 +329,18 @@ async function coach(req, res, parts, q) {
     for (const key of gone) if (key) await delDoc(keyDoc(key));
     return send(res, 200, view(t));
   }
+  if (action === 'rekey') { // revoke one AI's key and issue a new one
+    const id = String(b.id || ''); let old;
+    const t = await updateDoc(file, t => {
+      if (!t.sel.includes(id)) return false;
+      old = t.keys[id] || ''; t.keys[id] = 'cdr_' + rid(21); t.codes[id] = rid(4).replace(/[-_]/g, 'x').toUpperCase().slice(0, 6);
+    });
+    if (!t) return send(res, 401, { error: 'Not signed in.' });
+    if (old === undefined) return send(res, 404, { error: 'Unknown AI.' });
+    await putDoc(keyDoc(t.keys[id]), { uid, id });
+    if (old) await delDoc(keyDoc(old));
+    return send(res, 200, view(t));
+  }
   if (action === 'task') { // the owner clears a claim that is stale or wrong
     let hit = null;
     const t = await updateDoc(file, t => {
@@ -339,9 +396,10 @@ export default async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://x'), q = url.searchParams;
     let p = q.get('__p'); if (p == null) p = url.pathname.replace(/^\/(api\/)?/, m => (m === '/api/' ? '' : ''));
-    if (/^\/(a|mcp)\//.test(url.pathname) && q.get('__p') == null) p = url.pathname.slice(1);
+    if (/^\/((a|mcp)\/|mcp$)/.test(url.pathname) && q.get('__p') == null) p = url.pathname.slice(1);
     const parts = p.split('/').filter(Boolean);
-    if (parts[0] === 'a') return await agent(req, res, parts, q);
+    if (parts[0] === 'a') return await agent(req, res, parts[2], q, parts[1] || '');
+    if (parts[0] === 'agent') return await agent(req, res, parts[1], q, null);
     if (parts[0] === 'mcp') return await mcp(req, res, parts);
     return await coach(req, res, parts, q);
   } catch (e) {

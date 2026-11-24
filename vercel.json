@@ -2,7 +2,8 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index?__p=$1" },
     { "source": "/a/(.*)", "destination": "/api/index?__p=a/$1" },
-    { "source": "/mcp/(.*)", "destination": "/api/index?__p=mcp/$1" }
+    { "source": "/mcp/(.*)", "destination": "/api/index?__p=mcp/$1" },
+    { "source": "/mcp", "destination": "/api/index?__p=mcp" }
   ],
   "headers": [
     { "source": "/mcp/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }, { "key": "Referrer-Policy", "value": "no-referrer" }] },

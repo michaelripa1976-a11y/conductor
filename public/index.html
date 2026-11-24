@@ -930,7 +930,7 @@ pad(el,st,inner){
   if(DESK.matches&&!inner){el.dataset.m=S.mode;el.classList.add('desk');el.innerHTML='<section class="col" id="cT" aria-label="Team"></section><section class="col" id="cP" aria-label="Missions"></section><section class="col" id="cH" aria-label="Done"></section>';teamView($('#cT'));histView($('#cH'));return V.pad($('#cP'),st,true)}
   if(!inner&&S.tab!=='pad'){el.dataset.m=S.mode;return (S.tab==='team'?teamView:histView)(el)}
   const STAT={on:'ON. Your AIs follow Conductor.',pause:'PAUSED. AIs read. Nobody acts.',off:'OFF. No AI follows Conductor.'};
-  const team=live(), chief=S.chief||team[0], N=id=>AIS[id].n;
+  const team=live(), chief=(S.chief&&AIS[S.chief]?S.chief:null)||team[0]||sel()[0]||ORDER[0], N=id=>AIS[id].n;
   const quiet=null, seen=id=>seenTxt(id);
   const needView=n=>{
     const ok=x=>!x||sel().includes(x); if(!ok(n.a)||!ok(n.b)||!ok(n.o)||(n.u&&!DOM[n.u]))return null;
@@ -1065,6 +1065,8 @@ CONDUCTOR-CLAIM code=${c}; mission=...; task=...
 CONDUCTOR-DONE code=${c}; mission=...; task=...; link=...; minutes=...
 Missions: money, email, calendar, code, home, writing, social, research.
 
+SECURE SETUP (better, if your app can save an API key): save ONLY the key (it starts with cdr_, the owner copies it from Conductor) and send it as the header "Authorization: Bearer <key>" to ${location.origin}/api/agent/state, /claim, /done and /checkin, with the same fields as the links. Test it first with ${location.origin}/api/agent/whoami. Then the links above are not needed.
+
 RIGHT NOW: save this skill, then check in. good = missions you are good at, reach = what you can access (inbox, calendar, files). No links or tools? Reply with: CONDUCTOR-CHECKIN code=${c}; good=...; reach=...`}
 const CONN={grok:1,claude:1,chatgpt:1};
 const setupText=id=>CONN[id]?mcpUrl(id):playbookText(id);
@@ -1078,7 +1080,9 @@ const INSTALL={
 };
 function pasteHelp(id){const n=AIS[id].n,I=INSTALL[id]||[`Save it in ${n}'s permanent instructions or memory.`,`If ${n} supports custom connectors, add one with the link.`];
   const rows=CONN[id]?[ADD[id],`Start a new chat and say: "Check in to Conductor"`,id==='grok'?'That one connection covers all your Grok bots.':`${n} then follows Conductor in every chat.`]:[`Paste the skill into ${n} and send`,I[0],'Optional, stronger: '+I[1]];
-  const sh=openSheet(`<div class="big">${av(id)}</div><h1>${CONN[id]?`Add Conductor to ${n}`:`Teach ${n} for good`}</h1><div class="rows">${rows.map((t,k)=>`<div class="row sm"><span class="num">${k+1}</span><div class="who" style="white-space:normal">${t}</div></div>`).join('')}</div><p>${CONN[id]?'The rules travel with the connector. Menu names can differ by plan.':'Saved once, it applies in every chat. Menu names can differ by plan.'}</p><div class="cta"><button class="btn">Got it</button><button class="lnk" id="cml">Copy connector link</button></div>`);
+  const sh=openSheet(`<div class="big">${av(id)}</div><h1>${CONN[id]?`Add Conductor to ${n}`:`Teach ${n} for good`}</h1><div class="rows">${rows.map((t,k)=>`<div class="row sm"><span class="num">${k+1}</span><div class="who" style="white-space:normal">${t}</div></div>`).join('')}</div><p>${CONN[id]?'The rules travel with the connector. Menu names can differ by plan.':'Saved once, it applies in every chat. Menu names can differ by plan.'}</p><div class="row sm" style="margin-top:10px;text-align:left"><span class="num">${ic('check',16)}</span><div class="who" style="white-space:normal;flex:1">Key only, for apps with a key vault<span class="say" style="display:block">${S.keys[id]?S.keys[id].slice(0,6)+'••••••••':'not made yet'} · sent as Authorization: Bearer</span></div><button class="chip" id="cky">Copy key</button></div><div class="cta"><button class="btn">Got it</button><button class="lnk" id="cml">Copy connector link</button><button class="lnk" id="nky">Key leaked or not working? Make a new one</button></div>`);
+  $('#cky',sh).onclick=async()=>{if(!S.keys[id])await saveNow();if(!S.keys[id])return toastMsg('Could not make its key. Try again.');copy(S.keys[id]);toastMsg('Key copied. Save only this in the vault.')};
+  $('#nky',sh).onclick=()=>{const c=openSheet(`<div class="big">${av(id)}</div><h1>Make a new key for ${n}?</h1><p>The old key, links and connector stop working at once. You will need to set ${n} up again.</p><div class="cta"><button class="btn" data-a="y">Make a new key</button><button class="btn alt" data-a="n">Keep the old one</button></div>`);$$('.btn',c).forEach(b=>b.onclick=async()=>{c.remove();if(b.dataset.a!=='y')return;try{hydrate(await api('rekey',{id}),false);toastMsg('New key made. Set '+n+' up again.');pasteHelp(id)}catch(e){toastMsg(e.message)}})};
   $('#cml',sh).onclick=async()=>{if(!S.keys[id])await saveNow();if(!S.keys[id])return toastMsg('Could not make its key. Try again.');copy(mcpUrl(id));toastMsg('Connector link copied.')};
   $('.btn',sh).onclick=()=>sh.remove()}
 function connect(id,el){const n=AIS[id].n; let t=null,hit=false;
