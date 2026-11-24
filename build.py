@@ -64,6 +64,11 @@ textarea:focus{outline:none;border-color:var(--pri)}
 a.btn{display:grid;place-items:center;text-decoration:none}
 .play.warn{background:#FFC83D;color:#221C44}.play.warn small{color:#5A3D00}.play.warn .do{background:var(--ink);color:#fff}
 .pick{max-width:100%}.pick .avl{width:48px;height:48px}
+/* accounts */
+.tg{border-radius:99px;padding:6px 10px;font-size:12px;font-weight:800;flex:none;background:#fff;color:var(--mute);box-shadow:inset 0 0 0 2px var(--line);white-space:nowrap}
+.tg.personal{background:var(--per);color:#06303A;box-shadow:none}.tg.work{background:var(--pri);color:#fff;box-shadow:none}.tg.off{background:var(--ink);color:#fff;box-shadow:none}
+.acct span{overflow-wrap:anywhere}
+.choice .ico{width:84px;height:84px;border-radius:26px}
 @media(min-width:900px){
   #app{width:min(96vw,1240px);height:min(94dvh,860px)}
   .scr:not(.desk){width:100%;max-width:640px;margin:0 auto;padding:28px 20px 30px;gap:18px}

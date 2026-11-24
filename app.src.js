@@ -8,7 +8,7 @@ const SP={personal:{n:'Personal',icon:'home',cls:'per',m:[['email','Email','mail
  work:{n:'Work',icon:'case',cls:'wrk',m:[['email','Email','mail','#FF6B9A'],['calendar','Calendar','calendar','#FFA62B'],['chat','Chat','chat','#9B5DE5'],['files','Files','doc','#3A86FF'],['accounting','Accounting','money','#22C27A'],['social','Social','people','#F2545B'],['code','Code','code','#5B4BFF'],['clients','Clients','case','#22B8CF']]}};
 const SHARED=['personal:files','work:files','work:code'];
 const TASK={email:'Clear out my promo emails and list what needs a reply.',calendar:'Find me a free hour this week and hold it.',messages:'Summarize my unread messages.',chat:'Summarize what I missed in chat today.',payments:'List my bills due this week.',accounting:'List the invoices still unpaid.',social:'Draft one post for me to approve.',shopping:'Track my open orders.',home:'Check the thermostat schedule.',clients:'List the clients I owe a reply.'};
-const S={authed:false,name:'',email:'',team:null,otherName:null,scope:'both',sel:[],keys:{},codes:{},joined:{},skipped:{},benched:{},reach:{},seen:{},pick:{},mode:{personal:'on',work:'on'},quiet:false,onboarded:false,play:0,
+const S={authed:false,name:'',email:'',team:null,otherName:null,scope:'both',sel:[],keys:{},codes:{},joined:{},skipped:{},benched:{},reach:{},seen:{},pick:{},accts:[],mode:{personal:'on',work:'on'},quiet:false,onboarded:false,play:0,
   log:[],tasks:[],needs:[],skew:0,i:0,steps:[],space:'personal',tab:'pad',fa:null,q:'',wait:false,spot:null,arrived:false,fresh:[],known:null};
 const $=(q,e=document)=>e.querySelector(q), $$=(q,e=document)=>[...e.querySelectorAll(q)];
 const DESK=matchMedia('(min-width:900px)');
@@ -28,6 +28,16 @@ const can=src=>live().filter(id=>(S.reach[id]||[]).includes(src));
 const owners=src=>{const r=can(src);if(shared(src))return r;const p=S.pick[src];return p&&live().includes(p)?[p]:r.length===1?r:[]};
 const conflicts=()=>srcs().filter(src=>!shared(src)&&!owners(src).length&&can(src).length>1);
 const empties=()=>srcs().filter(src=>!shared(src)&&!can(src).length&&!owners(src).length);
+/* Accounts: an AI reports them, the owner tags each one personal or work. */
+const KN={email:['Email','mail','#FF6B9A'],calendar:['Calendar','calendar','#FFA62B'],chat:['Messages','chat','#9B5DE5'],files:['Files','doc','#3A86FF']};
+const TAGN={personal:'Personal',work:'Work',off:'Hands off'};
+const acctBy=k=>S.accts.find(a=>a.k===k);
+const aName=a=>esc(a.addr||a.label||'An account');
+const aWho=a=>a.by.length?a.by.map(N).join(' and '):'No AI';
+const untagged=()=>S.accts.filter(a=>!a.tag);
+const kindOf=src=>{const k=String(src).split(':')[1];return k==='messages'||k==='chat'?'chat':KN[k]?k:null};
+const guessLine=a=>a.tag?`Tagged ${TAGN[a.tag]}. Tap to change it.`:a.guess==='work'?'Looks like a company address. Your call.':a.guess==='personal'?'Looks like a personal one. Your call.':"I can't tell from the name. Your call.";
+async function tagAcct(a,v,addr){hydrate(await api('acct',{k:a.k,tag:v,...(addr?{addr}:{})}),false)}
 
 /* ---------- server sync ---------- */
 async function api(path,body){const r=await fetch('/api/'+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{});let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw Object.assign(new Error(j.error||'Something went wrong. Try again.'),{status:r.status});return j}
@@ -37,7 +47,7 @@ let sent='';
 function hydrate(st,all){
   S.authed=true;S.name=st.name;S.email=st.email;
   if(all){for(const k of OWN)S[k]=st[k];S.pick=st.pick||{};sent=ownJSON()}
-  for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];
+  for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];S.accts=st.accts||[];
   for(const id of Object.keys(st.joined))delete S.skipped[id];
   S.skew=Date.now()-st.now;S.log=st.log.slice().reverse();
   if(S.known)for(const w of S.log.filter(w=>!S.known.has(w.k)).reverse())S.fresh.push(w);
@@ -62,7 +72,7 @@ SOURCES. A source is a place you can act, named board:source. The list: ${srcLis
 
 EVERY TASK, in this order:
 1. Read the team state.
-2. You may READ anything. Only ACT on a source that is yours, or on a shared source.
+2. You may READ anything. Only ACT on a source that is yours, or on a shared source. Never act in an account I have not tagged yet.
 3. Claim the task before you start, naming its source. If you are one of several bots, name yourself in the bot field. If the answer is BLOCKED or HOLD, stop and tell me.
 4. Do the work. A claim is never approval to send or delete anything.
 5. Report it done. Then end your reply with "Coach: reported".
@@ -75,7 +85,7 @@ B. Open these links (private, never share them):
 - state: ${B}/state
 - claim: ${B}/claim?source=BOARD:SOURCE&task=REAL+SHORT+TITLE&bot=YOUR+BOT+NAME
 - done: ${B}/done?source=BOARD:SOURCE&task=REAL+SHORT+TITLE&link=URL&minutes=N
-- check in: ${B}/checkin?reach=LIST
+- check in: ${B}/checkin?accounts=ACCOUNTS&reach=LIST
 C. If you can do neither, end your reply with one line for me to paste:
 COACH-CLAIM code=${c}; source=...; task=...
 COACH-DONE code=${c}; source=...; task=...; link=...; minutes=...
@@ -88,9 +98,11 @@ IF YOU HAVE A VAULT OR SECRET STORE, use it instead of the links. Do this yourse
 RIGHT NOW, do all of this yourself in one go, with no questions back to me:
 1. Save this playbook.
 2. Store the key in your vault if you have one, and run the test.
-3. Check in. reach = every source from the list above that you can really ACT on (send, change, create), not just read. Be honest: I decide positions from this.
+3. Check in with two things. Be honest: I decide positions from this.
+   accounts = every account you are signed in to and can really ACT in (send, change, create), not just read. Write each as ADDRESS(what it holds) and separate them with |. Example: me@company.com(email, calendar, files) | Gmail(email). What it holds: email, calendar, chat, files. Give the address when you can see it. If you cannot, give the service name. Do NOT say whether an account is personal or work. I tag each one myself.
+   reach = any other source from the list above that you can act on and that is not one of those accounts (code, social, payments and so on).
 4. Reply with one line: where you saved it, how you reach Coach AI, and what the check-in answered.
-No links, tools or vault? Reply with only: COACH-CHECKIN code=${c}; reach=...`}
+No links, tools or vault? Reply with only: COACH-CHECKIN code=${c}; accounts=...; reach=...`}
 const setupText=id=>CONN[id]?mcpUrl(id):playbookText(id);
 const ADD={grok:'Open grok.com/connectors, choose New Connector, then Custom, and paste the link.',claude:'In Claude, open Customize, then Connectors, and add a custom connector. Name it Coach AI and paste the link as its URL.',chatgpt:'In ChatGPT settings, turn on Developer mode under Apps and Connectors, create a connector and paste the link.'};
 function help(id){const n=N(id),rows=CONN[id]?[ADD[id],`Start a new chat and say: "Check in to Coach AI with every source you can act on"`,id==='grok'?'That one connection covers all your Grok bots.':`${n} then follows Coach AI in every chat.`]:[`Paste the playbook into ${n} and send`,`${n} saves it, checks in, and answers with one line`,`If it answers with a COACH-CHECKIN line, paste that line here`];
@@ -103,8 +115,8 @@ function pasteSheet(id,after){const sh=sheet(`<div class="big">${coach(84)}</div
   $('.btn',sh).onclick=async()=>{try{const r=await api('paste',{text:$('#pt',sh).value,id});hydrate(r.state,false);const bad=r.results.find(x=>!x.ok);if(bad){$('#pe',sh).textContent=bad.msg;return}sh.close();toast(esc(r.results[0].msg));after&&after()}catch(e){$('#pe',sh).textContent=e.message}}}
 
 /* ---------- onboarding: one step at a time ---------- */
-const STG={scope:[1,'YOUR BOARD'],signup:[2,'SIGN UP'],pick:[3,'YOUR PLAYERS'],book:[4,'PLAYBOOKS'],results:[5,'RESULTS'],conflict:[5,'RESULTS']};
-function build(){S.steps=[{t:'hello'},{t:'scope'},{t:'signup'},{t:'pick'}];S.sel.forEach(id=>S.steps.push({t:'book',id}));S.steps.push({t:'results'});conflicts().forEach(src=>S.steps.push({t:'conflict',src}));S.steps.push({t:'pad'})}
+const STG={scope:[1,'YOUR BOARD'],signup:[2,'SIGN UP'],pick:[3,'YOUR PLAYERS'],book:[4,'PLAYBOOKS'],acct:[5,'YOUR ACCOUNTS'],results:[5,'RESULTS'],conflict:[5,'RESULTS']};
+function build(){S.steps=[{t:'hello'},{t:'scope'},{t:'signup'},{t:'pick'}];S.sel.forEach(id=>S.steps.push({t:'book',id}));S.accts.filter(a=>a.by.length).forEach(a=>S.steps.push({t:'acct',k:a.k}));S.steps.push({t:'results'});conflicts().forEach(src=>S.steps.push({t:'conflict',src}));S.steps.push({t:'pad'})}
 let iv=0;
 function go(n){clearInterval(iv);S.i=Math.max(0,Math.min(n,S.steps.length-1));render()}
 const next=()=>go(S.i+1);
@@ -129,17 +141,27 @@ const V={
   $$('.ai',el).forEach(b=>b.onclick=()=>{const id=b.dataset.id;S.sel=S.sel.includes(id)?S.sel.filter(x=>x!==id):ORDER.filter(x=>x===id||S.sel.includes(x));render(true)});
   $('#go').onclick=async()=>{if(!ok())return;const b=$('#go');b.disabled=true;b.textContent='Making their keys…';await saveNow();if(S.sel.every(id=>S.keys[id])){build();S.i=S.steps.findIndex(x=>x.t==='pick');next()}else{b.disabled=false;b.textContent='Try again'}}},
  book(el,st){const id=st.id,n=N(id),k=S.sel.indexOf(id),last=k===S.sel.length-1;let stage=S.joined[id]?3:1;
-  const report=()=>spaces().map(s=>{const L=SP[s].m.filter(m=>(S.reach[id]||[]).includes(sid(s,m[0])));return `<div><small>${SP[s].n.toUpperCase()}</small><span class="chips">${L.length?L.map(m=>`<span style="--c:${m[3]}">${m[1]}</span>`).join(''):'<b class="none">Nothing here</b>'}</span></div>`}).join('');
+  const mine=()=>S.accts.filter(a=>a.by.includes(id));
+  const onward=()=>{build();go(S.steps.findIndex(x=>x.t==='book'&&x.id===id)+1)}; // accounts arrive with the report, so the path ahead is laid out again
+  const report=()=>mine().map(a=>`<div><small style="letter-spacing:0;font-size:13px;color:var(--ink)">${aName(a)}</small><span class="chips">${a.has.map(k=>`<span style="--c:${KN[k][2]}">${KN[k][0]}</span>`).join('')}</span></div>`).join('')+spaces().filter(s=>!mine().length||SP[s].m.some(m=>!kindOf(sid(s,m[0]))&&(S.reach[id]||[]).includes(sid(s,m[0])))).map(s=>{const L=SP[s].m.filter(m=>(S.reach[id]||[]).includes(sid(s,m[0])));return `<div><small>${SP[s].n.toUpperCase()}</small><span class="chips">${L.length?L.map(m=>`<span style="--c:${m[3]}">${m[1]}</span>`).join(''):'<b class="none">Nothing here</b>'}</span></div>`}).join('');
   const draw=()=>{el.innerHTML=shell(`<div class="steps">${['Copy',CONN[id]?'Add':'Paste','Report'].map((t,q)=>`<span class="${stage===q+1?'on':''} ${stage>q+1||(stage===3&&q===2)?'ok':''}"><b>${stage>q+1||(stage===3&&q===2)?ic('check',12,'#06301C',3.5):q+1}</b>${t}</span>`).join('')}</div>
     <div class="hero"><div class="pass"><span id="co">${coach(120)}</span><span class="to ${stage===2?'listen':''}">${av(id)}</span><b class="book"></b></div>${stage===2?'<div class="dots"><i></i><i></i><i></i></div>':''}${stage===2&&CONN[id]?`<div class="list stag" style="width:100%"><div><b class="num">1</b>${ADD[id]}</div><div><b class="num">2</b>Start a new chat with ${n} and say: Check in to Coach AI</div><div><b class="num">!</b>The link goes in ${n}'s connector settings. Pasting it into a chat does nothing.</div></div>`:''}${stage===3?`<div class="rep stag">${report()}</div>`:''}</div>
-    <div class="txt"><h1>${stage===1?`${n}, here is your playbook.`:stage===2?(CONN[id]?`Add it as a connector in ${n}.`:`Now paste it into ${n}.`):`${n} reported back.`}</h1><p>${stage===1?`AI ${k+1} of ${S.sel.length}. One tap copies ${CONN[id]?'its connector link':'it'}.`:stage===2?`Coach is listening for ${n}…`:((S.reach[id]||[]).length?'This is what it says it can act on.':'It joined, but named no source yet.')}</p></div>
-    <button class="btn" id="go" ${stage===2?'disabled':''}>${stage===1?(CONN[id]?'Copy connector link':'Copy playbook'):stage===2?`Listening for ${n}…`:last?'See the results':`Next: ${N(S.sel[k+1])}`}</button>
+    <div class="txt"><h1>${stage===1?`${n}, here is your playbook.`:stage===2?(CONN[id]?`Add it as a connector in ${n}.`:`Now paste it into ${n}.`):`${n} reported back.`}</h1><p>${stage===1?`AI ${k+1} of ${S.sel.length}. One tap copies ${CONN[id]?'its connector link':'it'}.`:stage===2?`Coach is listening for ${n}…`:(mine().length?`It can act in ${mine().length} account${mine().length>1?'s':''}. You tag them next.`:(S.reach[id]||[]).length?'This is what it says it can act on.':'It joined, but named no source yet.')}</p></div>
+    <button class="btn" id="go" ${stage===2?'disabled':''}>${stage===1?(CONN[id]?'Copy connector link':'Copy playbook'):stage===2?`Listening for ${n}…`:last?(S.accts.some(a=>a.by.length)?'Tag your accounts':'See the results'):`Next: ${N(S.sel[k+1])}`}</button>
     ${stage===2?`<div class="lnks"><button class="lnk" id="hp">${CONN[id]?'No connectors? Use the playbook instead':'What do I do?'}</button><button class="lnk" id="ps">It replied with a line? Paste it</button><button class="lnk" id="sk">Skip ${n} for now</button></div>`:''}`,st);
    wireBack();
-   $('#go').onclick=()=>{if(stage===3)return next();if(stage!==1)return;copy(setupText(id));whistle();$('#co').classList.add('toot');const bk=$('.book',el);bk.style.setProperty('--dx','120px');bk.style.setProperty('--dy','0px');bk.classList.add('fly');setTimeout(()=>{stage=2;draw();clearInterval(iv);iv=setInterval(check,2000)},750)};
-   if(stage===2){$('#hp').onclick=()=>help(id);$('#ps').onclick=()=>pasteSheet(id,check);$('#sk').onclick=()=>{clearInterval(iv);S.skipped[id]=true;next()}}};
+   $('#go').onclick=()=>{if(stage===3)return onward();if(stage!==1)return;copy(setupText(id));whistle();$('#co').classList.add('toot');const bk=$('.book',el);bk.style.setProperty('--dx','120px');bk.style.setProperty('--dy','0px');bk.classList.add('fly');setTimeout(()=>{stage=2;draw();clearInterval(iv);iv=setInterval(check,2000)},750)};
+   if(stage===2){$('#hp').onclick=()=>help(id);$('#ps').onclick=()=>pasteSheet(id,check);$('#sk').onclick=()=>{clearInterval(iv);S.skipped[id]=true;onward()}}};
   const check=async()=>{if(S.steps[S.i]!==st)return clearInterval(iv);await pull();if(S.joined[id]&&stage!==3&&!$('.sheet')){clearInterval(iv);stage=3;ding(988);draw();if(last)confetti(24)}};
   draw()},
+ acct(el,st){const a=acctBy(st.k);if(!a)return void setTimeout(next,0);
+  const all=S.steps.filter(x=>x.t==='acct'),at=all.indexOf(st)+1,sp=spaces(),two=sp.length===2,c=KN[a.has[0]]||KN.email;
+  const O=two?[['personal','home','#22B8CF','#06303A','Personal'],['work','case','#5B4BFF','#fff','Work']]:[[sp[0],SP[sp[0]].icon,sp[0]==='work'?'#5B4BFF':'#22B8CF',sp[0]==='work'?'#fff':'#06303A',SP[sp[0]].n],['off','check','#221C44','#fff','Hands off']];
+  el.innerHTML=shell(`<div class="hero" style="gap:12px"><span class="bigsrc" style="--c:${c[2]}">${ic(c[1],52)}</span><div class="txt"><h1>${two?'Personal or work?':`Is this a ${SP[sp[0]].n.toLowerCase()} account?`}</h1><p style="overflow-wrap:anywhere">${a.addr?esc(a.addr):`${esc(a.label||'An account')}. ${aWho(a)} can use it but did not share the address.`}</p></div><div class="acct">${a.has.map(k=>`<span>${KN[k][0]}</span>`).join('')}</div>${a.addr?'':'<label class="field" style="width:100%">Its address, if you want to add it<input id="ad" type="email" autocomplete="off" placeholder="you@example.com"></label>'}</div>
+   <div class="choice"><span class="vs" aria-hidden="true">OR</span>${O.map(([v,i,bg,fg,t])=>`<button data-v="${v}" class="${a.tag===v?'win':''}"><span class="ico" style="--c:${bg}">${ic(i,34,fg)}</span>${t}</button>`).join('')}</div>
+   ${say(guessLine(a))}${two?'<div class="lnks"><button class="lnk" id="off">Neither. No AI acts in it</button></div>':''}<p class="note">Account ${at} of ${all.length}. Reported by ${aWho(a)}.</p>`,st);
+  const pick=async(v,b)=>{const ad=$('#ad',el);try{await tagAcct(a,v,ad?ad.value.trim():'')}catch(e){return toast(esc(e.message))}ding(1175);$$('.choice button',el).forEach(x=>{x.classList.toggle('win',x===b);x.classList.toggle('lose',!!b&&x!==b)});setTimeout(next,b?700:250)};
+  $$('.choice button',el).forEach(b=>b.onclick=()=>pick(b.dataset.v,b));const o=$('#off',el);if(o)o.onclick=()=>pick('off',null)},
  results(el){const C=conflicts(),all=srcs(),set=all.filter(src=>owners(src).length).length,nobody=!live().length;
   el.innerHTML=shell(`${say(nobody?'No AI has reported yet. You can connect them from the Team tab.':C.length?`The results are in. I set ${set} positions. ${C.length} need${C.length>1?'':'s'} your call.`:`The results are in. ${set} positions are set.`)}<div class="fill">${spaces().map((s,si)=>`<div class="brd"><h2>${ic(SP[s].icon,16,'#221C44')}${SP[s].n.toUpperCase()}</h2><div class="strip">${SP[s].m.map((m,k)=>{const src=sid(s,m[0]),o=owners(src),sh=shared(src),q=C.includes(src);return `<span style="--c:${m[3]};--d:${(k*.07+si*.6).toFixed(2)}s" class="${q?'q':''}" role="img" aria-label="${m[1]}: ${sh?'shared':o.length?N(o[0]):q?'needs your call':'no AI yet'}">${ic(m[2],26)}${sh?`<em class="n">${o.length}</em>`:o.length?av(o[0]):q?'<em>?</em>':'<em class="n">0</em>'}</span>`}).join('')}</div></div>`).join('')}</div><p class="note">A face means that AI acts there. A number means shared. Yellow needs you.</p><button class="btn" id="go">${C.length?`Settle ${C.length} conflict${C.length>1?'s':''}`:'To the Launch Pad'}</button>`);
   ding(784);$('#go').onclick=()=>{build();S.i=S.steps.findIndex(x=>x.t==='results');next()}},
@@ -162,7 +184,7 @@ function loginSheet(){const sh=sheet(`<div class="big">${coach(84)}</div><h1>Wel
 function enter(){S.space=spaces()[0];build();const f=t=>S.steps.findIndex(t);
   if(S.onboarded)return go(S.steps.length-1);
   if(S.sel.length<2)return go(f(x=>x.t==='pick'));
-  const b=f(x=>x.t==='book'&&!S.joined[x.id]&&!S.skipped[x.id]);go(b>=0?b:f(x=>x.t==='results'))}
+  const b=f(x=>x.t==='book'&&!S.joined[x.id]&&!S.skipped[x.id]),u=f(x=>x.t==='acct'&&acctBy(x.k)&&!acctBy(x.k).tag);go(b>=0?b:u>=0?u:f(x=>x.t==='results'))}
 
 /* ---------- Launch Pad ---------- */
 const navHTML=()=>DESK.matches?'':`<div class="nav">${[['pad','Pad'],['team','Team'],['done',S.log.length+' Done']].map(([k,t])=>`<button data-t="${k}" ${S.tab===k?'aria-current="page"':''}>${t}</button>`).join('')}</div>`;
@@ -204,9 +226,9 @@ function wirePlay(el){const b=$('#brief',el);if(b)b.onclick=()=>briefing();const
    if(p===2){if(!e)return adv();S.space=meta(e).s;S.spot=e;render(true);return}
    if(p===3){confetti(20);return adv()}}}
 function srcSheet(src){const m=meta(src),sh0=shared(src),wk=now()-7*864e5;
-  const draw=()=>{const o=owners(src),e=can(src),W=S.log.filter(w=>w.src===src),w7=W.filter(w=>w.at>=wk),open=S.tasks.filter(x=>x.src===src),g=group(W).slice(0,12),md=S.mode[m.s];
+  const draw=()=>{const o=owners(src),e=can(src),W=S.log.filter(w=>w.src===src),w7=W.filter(w=>w.at>=wk),open=S.tasks.filter(x=>x.src===src),g=group(W).slice(0,12),md=S.mode[m.s],AC=S.accts.filter(a=>a.tag===m.s&&a.has.includes(kindOf(src)));
    const head=md!=='on'?`${SP[m.s].n} is ${md==='pause'?'paused':'off'}. Nobody acts.`:sh0?(e.length?`Shared. ${e.map(N).join(', ')} can work here when you ask.`:'Shared. No AI can reach it yet.'):o.length?`${N(o[0])} acts on ${m.full}.`:e.length>1?`${e.length} AIs can reach it. Pick one.`:`No AI can reach ${m.full} yet.`;
-   const sh=sheet(`<div class="big"><span class="ico" style="--c:${m.c}">${ic(m.icon,34)}</span>${(sh0?e:o).slice(0,3).map(av).join('')}</div><h1>${m.full}</h1><p>${head}</p>
+   const sh=sheet(`<div class="big"><span class="ico" style="--c:${m.c}">${ic(m.icon,34)}</span>${(sh0?e:o).slice(0,3).map(av).join('')}</div><h1>${m.full}</h1><p>${head}</p>${AC.length?`<div class="acct">${AC.map(a=>`<span>${aName(a)}</span>`).join('')}</div>`:''}
     <div class="mvs"><div><b>${w7.length}</b>done this week</div><div><b>${hm(w7.reduce((n,w)=>n+(w.min||0),0))}</b>time back</div><div><b>${open.length}</b>open now</div></div>
     <div class="rows scrollr">${open.map(x=>`<div class="row"><span class="a">${av(x.id)}</span><span class="t"><b>${esc(x.title)}</b><small>In progress · ${N(x.id)}${x.by?' · '+esc(x.by):''} · ${ago(x.at)}</small></span><button class="chipb" data-clr="${x.k}">Clear</button></div>`).join('')}${g.map(winRow).join('')}${open.length||g.length?'':'<p class="note">Nothing here yet. Work lands when an AI reports it.</p>'}</div>
     ${sh0?'':`<div class="pick" role="group" aria-label="Who acts here">${live().map(id=>`<button data-id="${id}" aria-pressed="${o[0]===id}" aria-label="${N(id)}">${av(id)}</button>`).join('')}</div>`}
@@ -216,7 +238,7 @@ function srcSheet(src){const m=meta(src),sh0=shared(src),wk=now()-7*864e5;
    $$('[data-clr]',sh).forEach(b=>b.onclick=async()=>{try{hydrate(await api('task',{k:b.dataset.clr}),false);toast('Claim cleared.')}catch(x){toast(esc(x.message))}draw()});
    $$('.row[data-k]',sh).forEach(r=>r.onclick=()=>winSheet(g[+r.dataset.k]))};
   draw()}
-function needSheet(){const n=S.needs[0];if(!n)return;const m=meta(n.src),A=N(n.a);let h,p,B;
+function needSheet(){const n=S.needs[0];if(!n)return;if(n.t==='tag'){const a=acctBy(n.acct);if(a)return tagSheet(a.k,()=>{render(true);if(S.needs.length)needSheet()});S.needs.shift();return needSheet()}const m=meta(n.src),A=N(n.a);let h,p,B;
   if(n.t==='pick'){h=`Who acts on ${m.full}?`;p=`${A} wanted to start "${esc(n.title||'a task')}". Pick the AI that acts here.`;B=can(n.src).map(id=>[id,N(id)])}
   else if(n.t==='wrong'){h=`${A} reached into ${m.full}.`;p=`That is ${N(n.o)}'s position. The task was "${esc(n.title)}".`;B=[[n.o,`Keep ${N(n.o)}`],[n.a,`Hand it to ${A}`]]}
   else if(n.t==='overlap'){h=`Two AIs on the same job.`;p=`${A} and ${N(n.b)} both picked up "${esc(n.title)}" on ${m.full}.`;B=[[n.a,`${A} keeps it`],[n.b,`${N(n.b)} keeps it`],['both','Let both work']]}
@@ -254,15 +276,25 @@ const status=id=>S.benched[id]?'On the bench':S.joined[id]?`Last heard from ${ag
 function teamView(el){
   el.innerHTML=`<div class="padh"><h1>Team</h1><button class="chipb" id="acct">Account</button></div>
    <div class="rows" id="tl">${S.sel.map(id=>`<button class="row ${S.joined[id]&&!S.benched[id]?'':'off'}" data-id="${id}"><span class="a">${av(id)}<i class="dot ${S.benched[id]?'':S.joined[id]?(quietAI()===id?'q':'g'):''}"></i></span><span class="t"><b>${N(id)}</b><small>${status(id)}</small></span><span class="cnt">${S.log.filter(w=>w.id===id).length}</span></button>`).join('')}</div>
-   <button class="btn sm alt" id="add">+ Add an AI</button>${navHTML()}`;
+   <div class="two"><button class="btn sm alt" id="add">+ Add an AI</button><button class="btn sm alt" id="acs">Accounts${untagged().length?` (${untagged().length})`:''}</button></div>${navHTML()}`;
+  $('#acs',el).onclick=acctsSheet;
   $$('#tl .row',el).forEach(r=>r.onclick=()=>aiSheet(r.dataset.id));
   $('#add',el).onclick=()=>{const rest=ORDER.filter(id=>!S.sel.includes(id));if(!rest.length)return toast('Every AI is already on the team.');
     const sh=sheet(`<h1>Add a player</h1><div class="ais small">${rest.map(id=>`<button class="ai" data-id="${id}">${av(id)}<span>${N(id)}</span></button>`).join('')}</div>`);
     $$('.ai',sh).forEach(b=>b.onclick=async()=>{const id=b.dataset.id;S.sel=ORDER.filter(x=>x===id||S.sel.includes(x));sh.close();await saveNow();render(true);connectSheet(id)})};
   $('#acct',el).onclick=acctSheet;wireNav(el)}
+/* ---------- Accounts ---------- */
+const tagPill=a=>`<span class="tg ${a.tag||''}">${a.tag?TAGN[a.tag]:'Tag it'}</span>`;
+function acctsSheet(){const L=S.accts;
+  const sh=sheet(`<div class="big">${coach(70)}</div><h1>Accounts</h1><p>${L.length?'Your AIs reported these. You say which board each one is on.':'No accounts yet. They show up here when an AI reports them. Set an AI up again to make it report.'}</p><div class="rows scrollr" style="max-height:300px">${L.map(a=>`<button class="row" data-k="${a.k}"><span class="t"><b style="overflow-wrap:anywhere">${aName(a)}</b><small>${[a.has.map(k=>KN[k][0]).join(', '),a.by.length?aWho(a):'No AI reports it now'].filter(Boolean).join(' · ')}</small></span>${tagPill(a)}</button>`).join('')}</div><button class="btn" id="adn">Done</button>`,()=>render(true));
+  $('#adn',sh).onclick=()=>sh.close();$$('.row',sh).forEach(r=>r.onclick=()=>tagSheet(r.dataset.k,acctsSheet))}
+// One account, one question. Used from the Accounts list and from Coach's decision cards.
+function tagSheet(k,after){const a=acctBy(k);if(!a)return after&&after();const c=KN[a.has[0]]||KN.email,B=[...spaces().map(s=>[s,SP[s].n]),['off','No AI acts in it']];
+  const sh=sheet(`<div class="big"><span class="ico" style="--c:${c[2]}">${ic(c[1],34)}</span>${a.by.slice(0,3).map(av).join('')}</div><h1>${spaces().length===2?'Personal or work?':`Is this a ${SP[spaces()[0]].n.toLowerCase()} account?`}</h1><p style="overflow-wrap:anywhere">${a.addr?esc(a.addr):`${esc(a.label||'An account')}. ${aWho(a)} did not share the address.`}</p><div class="acct">${a.has.map(k=>`<span>${KN[k][0]}</span>`).join('')}</div>${a.addr?'':'<label class="field">Its address, if you want to add it<input id="ad" type="email" autocomplete="off" placeholder="you@example.com"></label>'}${B.map(([v,t])=>`<button class="btn ${a.tag===v?'':'alt'}" data-v="${v}">${t}</button>`).join('')}<p class="note">${guessLine(a)}</p>`);
+  $$('.btn',sh).forEach(b=>b.onclick=async()=>{const ad=$('#ad',sh);try{await tagAcct(a,b.dataset.v,ad?ad.value.trim():'');ding(1175)}catch(e){toast(esc(e.message))}sh.close();after&&after()})}
 function connectSheet(id){const n=N(id);let t=0;
   const sh=sheet(`<div class="big">${coach(70)}<span class="to listen">${av(id)}</span></div><h1>Connect ${n}</h1><p>${CONN[id]?`${ADD[id]} Then start a new chat and say: Check in to Coach AI. Pasting the link into a chat does nothing.`:`Copy its playbook, paste it into ${n}, and send.`}</p><button class="btn" id="cp">${CONN[id]?'Copy connector link':'Copy playbook'}</button><button class="lnk" id="hp">More help and its key</button><button class="lnk" id="ps">It replied with a line? Paste it</button>`,()=>clearInterval(t));
-  const check=async()=>{await pull();if(S.joined[id]){clearInterval(t);if($('.sheet')===sh)sh.close();ding(988);toast(`${n} joined the team.`);render(true);if(conflicts().length)toast(`${n} joined. A position needs your call.`)}};
+  const check=async()=>{await pull();if(S.joined[id]){clearInterval(t);if($('.sheet')===sh)sh.close();ding(988);toast(`${n} joined the team.`);render(true);if(S.needs.some(x=>x.t==='tag'))return needSheet();if(conflicts().length)toast(`${n} joined. A position needs your call.`)}};
   $('#cp',sh).onclick=e=>{copy(setupText(id));whistle();e.currentTarget.textContent=`Listening for ${n}…`;clearInterval(t);t=setInterval(check,2000)};
   $('#hp',sh).onclick=()=>{clearInterval(t);help(id)};$('#ps',sh).onclick=()=>{clearInterval(t);pasteSheet(id,check)}}
 function aiSheet(id){const n=N(id),r=(S.reach[id]||[]).map(src=>meta(src)).filter(m=>m.s);
