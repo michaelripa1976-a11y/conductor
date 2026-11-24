@@ -56,7 +56,7 @@ function sweep(t) { // tasks claimed more than 48h ago with no report
 
 /* ---------- things an AI can do (by link, by connector, or by pasted line) ---------- */
 // A task title has to say what the task is. Template text and one-word stand-ins are refused.
-const PLACEHOLDERS = ['SHORT TITLE', 'TASK', 'MISSION', 'SOURCE', 'TITLE', 'TASK TITLE', 'SHORT TASK TITLE', 'YOUR TASK'];
+const PLACEHOLDERS = ['REAL SHORT TITLE', 'SHORT TITLE', 'TASK', 'MISSION', 'SOURCE', 'TITLE', 'TASK TITLE', 'SHORT TASK TITLE', 'YOUR TASK'];
 function badTitle(title) {
   const n = String(title || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
   if (!n) return 'REJECTED. The task title is missing. Send a real short title that says what the task is, for example "Reply to landlord about the lease".';
