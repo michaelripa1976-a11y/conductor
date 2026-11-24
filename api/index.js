@@ -49,6 +49,17 @@ function sweep(t) { // tasks claimed more than 48h ago with no report
 }
 
 /* ---------- things an AI can do (by link or by pasted line) ---------- */
+// A task title has to say what the task is. Template text and one-word stand-ins are refused.
+const PLACEHOLDERS = ['SHORT TITLE', 'TASK', 'MISSION', 'TITLE', 'TASK TITLE', 'SHORT TASK TITLE', 'YOUR TASK'];
+function badTitle(title) {
+  const n = String(title || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+  if (!n) return 'REJECTED. The task title is missing. Send a real short title that says what the task is, for example "Reply to landlord about the lease".';
+  if (n.length < 4) return 'REJECTED. The task title is too short. Use at least 4 characters that say what the task is.';
+  if (PLACEHOLDERS.includes(n)) return `REJECTED. "${title}" is placeholder text, not a task. Send a real short title that says what the task is.`;
+  return '';
+}
+function join(t, id) { if (!t.joined[id]) { t.joined[id] = Date.now(); delete t.skipped[id]; if (!t.rep[id]) t.rep[id] = { d: [], reach: [] }; } }
+
 function doCheckin(t, id, good, reach) {
   const first = !t.joined[id];
   t.joined[id] = t.joined[id] || Date.now(); delete t.skipped[id]; t.seen[id] = Date.now();
@@ -59,8 +70,8 @@ function doCheckin(t, id, good, reach) {
 function doClaim(t, id, mission, task, bot) {
   t.seen[id] = Date.now(); const by = clean(bot, 24);
   const title = clean(task, 90), d = toMission(mission) || toMission(task);
-  if (!title) return 'Missing task. Use task=SHORT+TITLE.';
-  if (!t.joined[id]) return 'Check in first.';
+  const bad = badTitle(title); if (bad) return bad;
+  join(t, id);
   if (t.benched[id]) return 'You are on the bench. Do not act. You may still read the team state.';
   if (t.mode !== 'on') return `Conductor is ${t.mode === 'pause' ? 'PAUSED' : 'OFF'}. Do not start this task. Tell the coach.`;
   if (d) { const o = owners(t, d); if (o.length && !o.includes(id)) { addNeed(t, { t: 'wrong', a: id, o: o[0], u: d, title, sig: `wrong:${id}:${d}` }); return `BLOCKED. ${MISSION_NAME[d]} belongs to ${o.map(x => aiName(t, x)).join(' and ')}. Do not do this task. The coach has been told.`; } }
@@ -74,8 +85,8 @@ function doClaim(t, id, mission, task, bot) {
 function doDone(t, id, mission, task, link, minutes, bot) {
   t.seen[id] = Date.now(); let by = clean(bot, 24);
   const title = clean(task, 90); let d = toMission(mission) || toMission(task);
-  if (!title) return 'Missing task. Use task=SHORT+TITLE.';
-  if (!t.joined[id]) return 'Check in first.';
+  const bad = badTitle(title); if (bad) return bad;
+  join(t, id);
   const open = t.tasks.find(x => x.status === 'open' && x.id === id && norm(x.title) === norm(title));
   if (open) { open.status = 'done'; d = d || open.d; by = by || open.by || ''; }
   if (!d) d = MISSIONS.find(m => owners(t, m).includes(id)) || 'research';
@@ -103,7 +114,7 @@ async function runAgent(key, action, p) {
     if (action === 'checkin') out = doCheckin(t, id, p('good'), p('reach'));
     else if (action === 'claim') out = doClaim(t, id, p('mission'), p('task'), p('bot'));
     else if (action === 'done') out = doDone(t, id, p('mission'), p('task'), p('link'), p('minutes'), p('bot'));
-    else { t.seen[id] = Date.now(); out = stateText(t, id); if (t.nudges && t.nudges[id]) delete t.nudges[id]; }
+    else { join(t, id); t.seen[id] = Date.now(); out = stateText(t, id); if (t.nudges && t.nudges[id]) delete t.nudges[id]; }
   };
   if (action === 'state') { // reading never depends on a write: answer from what is stored, then record the visit if we can
     const cur = await getDoc(teamDoc(uid));
@@ -121,7 +132,7 @@ async function runAgent(key, action, p) {
     return { code: 503, text: 'Conductor is busy right now. Nothing was recorded. Wait a few seconds and try again.' };
   }
   if (!t) return { code: 404, text: 'Team not found.' };
-  return { code: 200, text: out };
+  return { code: out.startsWith('REJECTED.') ? 400 : 200, text: out };
 }
 async function agent(req, res, parts, q) {
   const action = (parts[2] || 'state').toLowerCase();
@@ -133,12 +144,13 @@ async function agent(req, res, parts, q) {
 /* ---------- connector: /mcp/<key> (Model Context Protocol, stateless Streamable HTTP) ---------- */
 const MCP_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const MISSION_ENUM = { type: 'string', enum: MISSIONS, description: 'Which mission the task belongs to.' };
-const MCP_RULES = 'Conductor coordinates this person\'s team of AI assistants so two AIs never do the same job. Use it on EVERY request where you would do, make, send, change, schedule or draft something (not for plain questions). Order: 1) conductor_state, 2) act only on missions you own (you may read anything), 3) conductor_claim before you start, 4) do the work, 5) conductor_done when finished. If the state says PAUSED or OFF, or a claim answers BLOCKED or HOLD, do not do the task and tell the person why. Save this rule in your permanent instructions or memory so it applies in every chat, and add it to the instructions of every bot or sub-agent you run for this person; they report under your name. For jobs that repeat on a schedule, report one summary a day, not every run.';
+const MCP_RULES = "You are connected to Conductor, the owner's shared list of which AI owns which mission (money, email, calendar, code, home, writing, social, research). Before any request to do, make, send, change, schedule or draft something (not plain questions): (1) call conductor_state; if the switch is PAUSED or OFF, don't act and tell the user. (2) Read anything, but act only on missions listed under 'Your missions'; if another AI owns it, tell the user who. (3) Call conductor_claim with the mission and a real short title; if the reply starts with BLOCKED or HOLD, stop and tell the user. (4) Do the work; a claim is never approval to send or delete anything. (5) Call conductor_done with the mission, the title, a link if any and honest minutes saved, then end the reply with 'Conductor: reported'. For scheduled or background runs, only claim and report when the run actually sends, changes or creates something. The first time you are connected, call conductor_checkin once. If several bots share this connection, each one puts its own name in the bot field.";
+const BOT_FIELD = { type: 'string', description: 'Your own bot or assistant name, when several bots share this connection (for example "Instagram posts"). Shown to the owner next to the AI name.' };
 const MCP_TOOLS = [
-  { name: 'conductor_state', title: 'Read team state', description: 'REQUIRED before any do, send, change, schedule or draft task for this person. Read the Conductor team state: the on/off switch, which AI owns which mission, open tasks, recent finished work and messages from the coach. Call this FIRST, before starting any task for this person.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true } },
-  { name: 'conductor_checkin', title: 'Check in', description: 'Join the team or refresh your profile. Call once when first connected, and again if what you can do changes.', inputSchema: { type: 'object', properties: { good: { type: 'string', description: 'Up to 3 missions you are good at, comma-separated, from: ' + MISSIONS.join(', ') }, reach: { type: 'string', description: 'What you can access, comma-separated, for example: inbox, calendar, files' } }, additionalProperties: false } },
-  { name: 'conductor_claim', title: 'Claim a task', description: 'Claim a task BEFORE you start working on it, so no other AI does the same job. If the answer starts with BLOCKED or HOLD, do not do the task and tell the person.', inputSchema: { type: 'object', properties: { mission: MISSION_ENUM, task: { type: 'string', description: 'Short task title, under 90 characters.' }, bot: { type: 'string', description: 'If you are one of several bots under the same AI, your own bot name, so the person can tell who did it.' } }, required: ['task'], additionalProperties: false } },
-  { name: 'conductor_done', title: 'Report a finished task', description: 'Report a task as finished, right after you complete it. Always call this when work you claimed is done.', inputSchema: { type: 'object', properties: { mission: MISSION_ENUM, task: { type: 'string', description: 'The same short title you claimed.' }, link: { type: 'string', description: 'https link to the result, if one exists.' }, minutes: { type: 'number', description: 'Your honest estimate of minutes saved for the person.' }, bot: { type: 'string', description: 'If you are one of several bots under the same AI, your own bot name, so the person can tell who did it.' } }, required: ['task'], additionalProperties: false } },
+  { name: 'conductor_state', title: 'Read team state', description: 'Call first before any do/send/change/draft/schedule task. Returns the switch (ON, PAUSED or OFF), your missions, which AI owns each mission, open tasks, recent finished work and messages from the owner. If the switch is PAUSED or OFF, do not act; tell the user.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true } },
+  { name: 'conductor_checkin', title: 'Check in', description: 'Call once, the first time you are connected, and again only if what you can do changes. Tells the owner what you are good at and what you can reach.', inputSchema: { type: 'object', properties: { good: { type: 'string', description: 'Up to 3 missions you are good at, comma-separated, from: ' + MISSIONS.join(', ') }, reach: { type: 'string', description: 'What you can access, comma-separated, for example: inbox, calendar, files' } }, additionalProperties: false } },
+  { name: 'conductor_claim', title: 'Claim a task', description: 'REQUIRED before acting on any mission task. Use a real short task title that says what the task is; placeholder text is rejected. If the reply starts with BLOCKED or HOLD, stop and tell the user. A claim is never approval to send or delete anything.', inputSchema: { type: 'object', properties: { mission: MISSION_ENUM, task: { type: 'string', minLength: 4, description: 'Real short task title, 4 to 90 characters, for example "Reply to landlord about the lease".' }, bot: BOT_FIELD }, required: ['task'], additionalProperties: false } },
+  { name: 'conductor_done', title: 'Report a finished task', description: 'REQUIRED right after you finish a task you claimed. Send the mission, the same title, a link if one exists and honest minutes saved. Then end your reply with "Conductor: reported".', inputSchema: { type: 'object', properties: { mission: MISSION_ENUM, task: { type: 'string', minLength: 4, description: 'The same real short title you claimed.' }, link: { type: 'string', description: 'https link to the result, if one exists.' }, minutes: { type: 'number', description: 'Your honest estimate of minutes saved for the owner.' }, bot: BOT_FIELD }, required: ['task'], additionalProperties: false } },
 ];
 async function mcp(req, res, parts) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -271,6 +283,17 @@ async function coach(req, res, parts, q) {
     for (const [id, key] of made) await putDoc(keyDoc(key), { uid, id });
     for (const key of gone) if (key) await delDoc(keyDoc(key));
     return send(res, 200, view(t));
+  }
+  if (action === 'task') { // the owner clears a claim that is stale or wrong
+    let hit = null;
+    const t = await updateDoc(file, t => {
+      const x = t.tasks.find(x => x.k === b.k && x.status === 'open'); if (!x) return false;
+      x.status = 'cleared'; hit = x;
+      const sig = 'dup:' + norm(x.title); if (!t.tasks.some(y => y.status === 'open' && y.hold && norm(y.title) === norm(x.title))) t.needs = t.needs.filter(n => n.sig !== sig && n.task !== x.k);
+      t.nudges = t.nudges || {}; (t.nudges[x.id] = t.nudges[x.id] || []).push(`The owner cleared your claim "${x.title}". Do not work on it unless you claim it again.`); t.nudges[x.id] = t.nudges[x.id].slice(-5);
+    });
+    if (!t) return send(res, 401, { error: 'Not signed in.' });
+    return hit ? send(res, 200, view(t)) : send(res, 404, { error: 'That claim is already gone.' });
   }
   if (action === 'need') { // the coach answers a decision card
     const t = await updateDoc(file, t => {

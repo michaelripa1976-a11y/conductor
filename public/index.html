@@ -819,11 +819,11 @@ pick(el){
 },
 playbook(el,st){
   const id=st.id,a=AIS[id],n=a.n,done=S.joined[id];
-  el.innerHTML=shell(`<div class="pb"><div class="steps">${['Copy','Paste','Train'].map((t,k)=>`${k?'<i></i>':''}<span class="st" data-s="${k+1}"><b>${k+1}</b>${t}</span>`).join('')}</div>
+  el.innerHTML=shell(`<div class="pb"><div class="steps">${['Copy',CONN[id]?'Add':'Paste','Train'].map((t,k)=>`${k?'<i></i>':''}<span class="st" data-s="${k+1}"><b>${k+1}</b>${t}</span>`).join('')}</div>
     <div class="hero"><div class="trn"><svg class="tring" viewBox="0 0 120 120" aria-hidden="true"><circle class="rb" cx="60" cy="60" r="54"/><circle class="rf" cx="60" cy="60" r="54"/></svg><span class="bob" id="bw">${done?'':av(id)}</span>${CAP}</div><div class="book" style="--c:${a.c}"><i></i><i></i><i></i><i></i><b>KEY INSIDE</b></div>${[0,1,2,3,4,5].map(k=>`<i class="kn" style="--k:${k};background:${DOM[DORDER[k]].c}"></i>`).join('')}</div>
     <div class="bench ${sel().length>5?'many':''}">${sel().map(x=>`<span class="slot ${S.joined[x]?'in':''}" data-id="${x}">${av(x)}</span>`).join('')}</div></div>`,
-   done?`${n} is trained.`:`Give ${n} its playbook.`,done?'Already on the bench.':'One tap. Conductor handles the rest.',
-   `<button class="btn ${done?'':'pulse'}" id="go">${done?'Next':'Copy playbook'}</button><div class="lnks">${DESK.matches&&URLS[id]?`<a class="lnk" href="${URLS[id]}" target="_blank" rel="noopener">Open ${n} in a new tab</a>`:''}<button class="lnk" id="help">How do I make it stick?</button></div>`);
+   done?`${n} is trained.`:CONN[id]?`Add the Conductor connector to ${n}.`:`Give ${n} its playbook.`,done?'Already on the bench.':CONN[id]?(id==='grok'?'One connection covers all your Grok bots. No rules to paste.':'Add it once. No rules to paste or save.'):'One tap. Conductor handles the rest.',
+   `<button class="btn ${done?'':'pulse'}" id="go">${done?'Next':CONN[id]?'Copy connector link':'Copy playbook'}</button><div class="lnks">${DESK.matches&&URLS[id]?`<a class="lnk" href="${URLS[id]}" target="_blank" rel="noopener">Open ${n} in a new tab</a>`:''}<button class="lnk" id="help">${CONN[id]?'Where do I add it?':'How do I make it stick?'}</button></div>`);
   const h=$('h1',el),p=$('.txt p',el),hero=$('.hero',el),go=$('#go');
   const step=(k,ok)=>$$('.st',el).forEach(x=>{const v=+x.dataset.s;x.classList.toggle('on',v===k);x.classList.toggle('ok',v<=ok)});
   step(done?0:1,done?3:0); if(done)hero.classList.add('leaving');
@@ -840,15 +840,16 @@ playbook(el,st){
   const trained=()=>{step(0,3);hero.classList.remove('training');hero.classList.add('grad');sfx('crown');h.textContent=`${n} is trained!`;p.textContent='It knows the rules and has its key.';go.textContent='Trained!';later(join,1100)};
   const train=()=>{step(3,2);hero.classList.add('training');sfx('deal');h.textContent=`${n} checked in. Training…`;go.textContent='Training…';
     ['Reading the team rules…','Learning who owns what…','Getting its key…'].forEach((c,k)=>later(()=>{p.textContent=c},k*650));later(trained,2000)};
-  const wait=()=>{step(2,1);hero.classList.add('held','waiting');h.textContent=`Now paste it into ${n}.`;p.textContent=`Conductor is listening for ${n}…`;go.disabled=true;go.classList.remove('pulse');go.textContent=`Listening for ${n}…`;
-    $('.lnks',el).innerHTML=`<button class="lnk" id="pst">It replied with a report? Paste it</button><button class="lnk" id="cag">Copy playbook again</button><button class="lnk" id="sk">Skip ${n} for now</button>`;
+  const wait=()=>{step(2,1);hero.classList.add('held','waiting');h.textContent=CONN[id]?`Now add it in ${n}.`:`Now paste it into ${n}.`;p.textContent=CONN[id]?`Then tell ${n}: "Check in to Conductor".`:`Conductor is listening for ${n}…`;go.disabled=true;go.classList.remove('pulse');go.textContent=`Listening for ${n}…`;
+    $('.lnks',el).innerHTML=`<button class="lnk" id="pst">It replied with a report? Paste it</button><button class="lnk" id="cag">${CONN[id]?'Where do I add it?':'Copy playbook again'}</button>${CONN[id]?`<button class="lnk" id="alt">No connectors on your plan? Copy paste-in rules</button>`:''}<button class="lnk" id="sk">Skip ${n} for now</button>`;
     let hit=false;
     const check=async()=>{await pull();if(S.joined[id]&&!hit){hit=true;clearInterval(iv);hero.classList.remove('waiting');$('.lnks',el).innerHTML='';train()}};
     $('#pst').onclick=()=>pasteSheet(id,check);
-    $('#cag').onclick=()=>{copy(playbookText(id));toastMsg('Playbook copied.');pasteHelp(id)};
+    $('#cag').onclick=()=>{if(CONN[id])return pasteHelp(id);copy(playbookText(id));toastMsg('Playbook copied.');pasteHelp(id)};
+    if($('#alt'))$('#alt').onclick=()=>{copy(playbookText(id));toastMsg('Rules copied. Paste them into '+n+'.')};
     $('#sk').onclick=()=>{clearInterval(iv);S.skipped[id]=true;build();next()};
     clearInterval(iv);iv=setInterval(check,2000)};
-  go.onclick=()=>{if(done)return next();copy(playbookText(id));sfx('ding');wait()};
+  go.onclick=()=>{if(done)return next();copy(setupText(id));sfx('ding');wait()};
 },
 report(el){
   build();
@@ -1065,6 +1066,9 @@ CONDUCTOR-DONE code=${c}; mission=...; task=...; link=...; minutes=...
 Missions: money, email, calendar, code, home, writing, social, research.
 
 RIGHT NOW: save this skill, then check in. good = missions you are good at, reach = what you can access (inbox, calendar, files). No links or tools? Reply with: CONDUCTOR-CHECKIN code=${c}; good=...; reach=...`}
+const CONN={grok:1,claude:1,chatgpt:1};
+const setupText=id=>CONN[id]?mcpUrl(id):playbookText(id);
+const ADD={grok:'Open grok.com/connectors, choose New Connector, then Custom, and paste the link.',claude:'In Claude, open Settings, then Connectors, add a custom connector and paste the link.',chatgpt:'In ChatGPT settings, turn on Developer mode under Apps and Connectors, create a connector and paste the link.'};
 const INSTALL={
   chatgpt:['Ask it to save the skill to memory, or paste it into its custom instructions.','In its settings, turn on Developer mode under Apps and Connectors, then create a connector with the link.'],
   claude:['Ask Claude to save it as a skill, or add it to a Project\'s instructions.','In Settings, open Connectors, add a custom connector and paste the link.'],
@@ -1073,14 +1077,15 @@ const INSTALL={
   muse:['Ask Muse to remember it as a skill for every chat.','Ask Muse to build a custom connector from the links inside the skill.'],
 };
 function pasteHelp(id){const n=AIS[id].n,I=INSTALL[id]||[`Save it in ${n}'s permanent instructions or memory.`,`If ${n} supports custom connectors, add one with the link.`];
-  const sh=openSheet(`<div class="big">${av(id)}</div><h1>Teach ${n} for good</h1><div class="rows">${[`Paste the skill into ${n} and send`,I[0],'Optional, stronger: '+I[1]].map((t,k)=>`<div class="row sm"><span class="num">${k+1}</span><div class="who" style="white-space:normal">${t}</div></div>`).join('')}</div><p>Saved once, it applies in every chat. Menu names can differ by plan.</p><div class="cta"><button class="btn">Got it</button><button class="lnk" id="cml">Copy connector link</button></div>`);
+  const rows=CONN[id]?[ADD[id],`Start a new chat and say: "Check in to Conductor"`,id==='grok'?'That one connection covers all your Grok bots.':`${n} then follows Conductor in every chat.`]:[`Paste the skill into ${n} and send`,I[0],'Optional, stronger: '+I[1]];
+  const sh=openSheet(`<div class="big">${av(id)}</div><h1>${CONN[id]?`Add Conductor to ${n}`:`Teach ${n} for good`}</h1><div class="rows">${rows.map((t,k)=>`<div class="row sm"><span class="num">${k+1}</span><div class="who" style="white-space:normal">${t}</div></div>`).join('')}</div><p>${CONN[id]?'The rules travel with the connector. Menu names can differ by plan.':'Saved once, it applies in every chat. Menu names can differ by plan.'}</p><div class="cta"><button class="btn">Got it</button><button class="lnk" id="cml">Copy connector link</button></div>`);
   $('#cml',sh).onclick=async()=>{if(!S.keys[id])await saveNow();if(!S.keys[id])return toastMsg('Could not make its key. Try again.');copy(mcpUrl(id));toastMsg('Connector link copied.')};
   $('.btn',sh).onclick=()=>sh.remove()}
 function connect(id,el){const n=AIS[id].n; let t=null,hit=false;
-  const sh=openSheet(`<div class="big">${av(id)}</div><h1>Connect ${n}</h1><p>Copy its playbook, paste it into ${n}, then send.</p><div class="cta"><button class="btn">Copy playbook</button><button class="lnk" id="cps" style="display:none">It replied with a report? Paste it</button></div>`), b=$('.btn',sh);
+  const sh=openSheet(`<div class="big">${av(id)}</div><h1>Connect ${n}</h1><p>${CONN[id]?`${ADD[id]} Then tell ${n}: "Check in to Conductor".`:`Copy its playbook, paste it into ${n}, then send.`}</p><div class="cta"><button class="btn">${CONN[id]?'Copy connector link':'Copy playbook'}</button><button class="lnk" id="cps" style="display:none">It replied with a report? Paste it</button></div>`), b=$('.btn',sh);
   const fin=()=>{if(hit)return;hit=true;clearInterval(t);const prev={};DORDER.forEach(d=>prev[d]=owners(d));AIS[id].d.forEach(d=>S.over[d]=prev[d]);delete S.skipped[id];build();S.i=S.steps.length-1;$$('.sheet').forEach(x=>x.remove());sfx('join');const re=()=>DESK.matches?go(S.i):teamView(el);re();assign(id,prev,()=>{re();toastMsg(`${n} joined the team.`)})};
   const check=async()=>{await pull();if(S.joined[id])fin()};
-  b.onclick=async()=>{if(!S.keys[id])await saveNow();if(!S.keys[id])return toastMsg('Could not make its key. Try again.');copy(playbookText(id));sfx('ding');b.disabled=true;b.textContent=`Listening for ${n}…`;$('#cps').style.display='';clearInterval(t);t=setInterval(()=>{if(!S.steps[S.i]||S.steps[S.i].t!=='pad')return clearInterval(t);check()},2000)};
+  b.onclick=async()=>{if(!S.keys[id])await saveNow();if(!S.keys[id])return toastMsg('Could not make its key. Try again.');copy(setupText(id));sfx('ding');b.disabled=true;b.textContent=`Listening for ${n}…`;$('#cps').style.display='';clearInterval(t);t=setInterval(()=>{if(!S.steps[S.i]||S.steps[S.i].t!=='pad')return clearInterval(t);check()},2000)};
   $('#cps').onclick=()=>pasteSheet(id,check);
   if(S.joined[id])fin();
 }
@@ -1175,8 +1180,8 @@ function teamView(el){
      <div class="badges" style="justify-content:center;margin-top:8px">${AIS[id].reach.map(x=>`<span class="bdg new">Can reach: ${x}</span>`).join('')}</div>
      <div class="medals">${medals.map(([t,on])=>`<div class="medal ${on?'on':''}"><span>${ic('star',28,on?'#221C44':'#B9B4C9')}</span>${t}</div>`).join('')}</div>
      <p style="font-size:13px">Levels come at 10, 25, 50 and 100 finished items.</p>
-     <div class="cta"><button class="btn" data-a="upd">Brief ${AIS[id].n} &rarr;</button><button class="btn alt" data-a="fix">Copy its skill again</button></div>`);
-    $$('.btn',sh).forEach(b=>b.onclick=()=>{sh.remove();if(b.dataset.a==='upd')brief(id);if(b.dataset.a==='fix'){copy(playbookText(id));toastMsg(`Skill copied. Paste it into ${AIS[id].n}.`);pasteHelp(id)}});
+     <div class="cta"><button class="btn" data-a="upd">Brief ${AIS[id].n} &rarr;</button><button class="btn alt" data-a="fix">${CONN[id]?'Copy its connector link':'Copy its skill again'}</button></div>`);
+    $$('.btn',sh).forEach(b=>b.onclick=()=>{sh.remove();if(b.dataset.a==='upd')brief(id);if(b.dataset.a==='fix'){copy(setupText(id));toastMsg(CONN[id]?'Connector link copied.':`Skill copied. Paste it into ${AIS[id].n}.`);pasteHelp(id)}});
   });
   $('#mg').onclick=()=>{S.manage=true;teamView(el)};
   $('#tn').onclick=()=>{
@@ -1233,9 +1238,10 @@ function missionView(el,d,sheet){
    <div class="mvh">When</div>
    <div class="mvd" role="img" aria-label="Finished items per day, last 7 days: ${days.map(x=>x.n).join(', ')}">${days.map(x=>`<span><em>${x.n||''}</em><i style="height:${x.n?Math.max(14,Math.round(x.n/mx*100)):0}%;background:${x.n?D.c:'var(--line)'}"></i><small>${new Date(x.a).toLocaleDateString(undefined,{weekday:'narrow'})}</small></span>`).join('')}</div>
    <div class="mvh">What</div>
-   <div class="rows" id="mvl" style="flex:1;min-height:0">${open.map(x=>`<div class="row sm">${av(x.id)}<span style="flex:1;min-width:0;display:block"><span class="who" style="display:block">${esc(x.title)}</span><span class="say" style="display:block">${x.hold?'On hold, needs your decision':'In progress'} · ${AIS[x.id].n}${x.by?' ('+esc(x.by)+')':''} · ${agoTxt(x.at)}</span></span></div>`).join('')}${g.map(winRow).join('')}${open.length||g.length?'':`<p style="text-align:center;margin-top:16px">Nothing here yet. Work lands when an AI reports it under ${D.n}.</p>`}</div>
+   <div class="rows" id="mvl" style="flex:1;min-height:0">${open.map(x=>`<div class="row sm">${av(x.id)}<span style="flex:1;min-width:0;display:block"><span class="who" style="display:block">${esc(x.title)}</span><span class="say" style="display:block">${x.hold?'On hold, needs your decision':'In progress'} · ${AIS[x.id].n}${x.by?' ('+esc(x.by)+')':''} · ${agoTxt(x.at)}</span></span><button class="chip" data-clr="${x.k}" aria-label="Clear the claim ${esc(x.title)}">Clear</button></div>`).join('')}${g.map(winRow).join('')}${open.length||g.length?'':`<p style="text-align:center;margin-top:16px">Nothing here yet. Work lands when an AI reports it under ${D.n}.</p>`}</div>
    <div style="display:flex;gap:8px;flex:none">${act}</div></div>`;
   $$('#mvl button.row',el).forEach(r=>r.onclick=()=>winSheet(g[+r.dataset.k]));
+  $$('[data-clr]',el).forEach(b=>b.onclick=async()=>{b.disabled=true;try{hydrate(await api('task',{k:b.dataset.clr}),false);toastMsg('Claim cleared.')}catch(e){toastMsg(e.message)}missionView(el,d,sheet)});
   const shut=()=>{if(sheet){const sh=el.closest('.sheet');if(sh)sh.remove()}};
   $$('[data-a]',el).forEach(b=>b.onclick=()=>{const a=b.dataset.a;shut();if(a==='on'){S.mode='on';saveNow();sfx('on');go(S.i)}if(a==='edit')editOwner(d);if(a==='brief')brief(o[0])});
   const x=$('#mvx',el);if(x)x.onclick=()=>{S.fd=null;histView(el);syncPick()};
