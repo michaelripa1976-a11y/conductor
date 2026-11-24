@@ -223,6 +223,10 @@ textarea:focus{outline:none;border-color:var(--pri)}
 .mvs div{background:#fff;border-radius:16px;padding:8px 4px;font-size:11px;font-weight:800;box-shadow:0 3px 0 var(--line)}
 .mvs b{display:block;font-family:"Baloo 2",Nunito,sans-serif;font-size:21px;line-height:1.1}
 .chips.c{justify-content:center}
+.vd{display:flex;flex-direction:column;gap:2px;border-radius:16px;padding:10px 12px;text-align:left;font-size:13px;font-weight:700;background:#fff;box-shadow:inset 0 0 0 3px var(--line)}
+.vd b{font-size:15px}.vd.g{box-shadow:inset 0 0 0 3px #22C27A}.vd.y{box-shadow:inset 0 0 0 3px #FFC83D}.vd.r{box-shadow:inset 0 0 0 3px #D93025}
+.dot2{width:12px;height:12px;border-radius:50%;flex:none;background:#22C27A}.dot2.y{background:#FFC83D}.dot2.r{background:#D93025}
+.list div b{font-weight:800}
 .search{height:48px;border-radius:16px;border:3px solid var(--line);background:#fff;padding:0 14px;font:inherit;font-size:16px;font-weight:700;color:var(--ink);flex:none;width:100%}
 .search:focus{outline:none;border-color:var(--pri)}
 .filt{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;font-weight:800;font-size:13px;color:var(--mute)}
@@ -321,7 +325,7 @@ let sent='';
 function hydrate(st,all){
   S.authed=true;S.name=st.name;S.email=st.email;
   if(all){for(const k of OWN)S[k]=st[k];S.pick=st.pick||{};sent=ownJSON()}
-  for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];S.accts=st.accts||[];S.said=st.said||{};S.ver=st.ver||{};S.pv=st.pv||0;
+  for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];S.accts=st.accts||[];S.trace=st.trace||[];S.diag=st.diag||{};S.verdict=st.verdict||{};S.said=st.said||{};S.ver=st.ver||{};S.pv=st.pv||0;
   for(const id of Object.keys(st.joined))delete S.skipped[id];
   S.skew=Date.now()-st.now;S.log=st.log.slice().reverse();
   if(S.known)for(const w of S.log.filter(w=>!S.known.has(w.k)).reverse())S.fresh.push(w);
@@ -352,6 +356,9 @@ EVERY TASK, in this order:
 5. Report it done. Then end your reply with "Coach: reported".
 If a board is PAUSED or OFF, do not act on it. Tell me instead.
 Jobs that repeat on a schedule: report one summary a day, not every run.
+TRACE. End every task reply with one line: Coach trace: state=…; claim=…; done=… . For each step write ok, or the exact error you got. Never write ok for a step you did not really do.
+DIAGNOSTICS. When I say "Run Coach diagnostics", answer these honestly, then send them: (1) saved = is this playbook saved for future chats, and where; (2) state = open the state link: ok or the exact error; (3) ping = open ${B}/ping : ok or the exact error; (4) tools = which you have of web, connector, memory, vault, files, schedule; (5) note = anything that stopped you following this playbook. If the ping worked, open ${B}/diag?saved=…&state=…&ping=…&tools=…&note=… . Either way end your reply with: COACH-DIAG code=${c}; saved=…; state=…; ping=…; tools=…; note=…
+SHUTDOWN. If Coach AI ever answers ARCHIVED, the team was closed: stop using this playbook, delete it and its key from your memory, skills and instructions, and tell me once that you did.
 
 HOW TO REACH COACH AI (use the first that works):
 A. The Coach AI connector tools, if installed. Connector URL: ${mcpUrl(id)}
@@ -378,6 +385,19 @@ RIGHT NOW, do all of this yourself in one go, with no questions back to me:
    If you cannot open a link with your own values put into it, do NOT open the check-in link as written. Skip the link and use the line in step 4.
 4. Reply with one line: where you saved it, how you reach Coach AI, and what the check-in answered. Then ALWAYS end your reply with this line, filled in with the same real values, even if the link worked:
 COACH-CHECKIN code=${c}; v=${S.pv}; accounts=...; reach=...`}
+const VERD={working:['Working','g'],paste:['Paste-back only','y'],forgot:['Forgot the playbook','r'],mismatch:['Says yes, nothing arrives','r'],silent:['No word since joining','y'],none:['Not connected','n']};
+const vd=id=>S.verdict[id]||{v:'none',why:''};
+const testText=id=>{const B=location.origin+'/a/'+S.keys[id],c=S.codes[id];return `Run Coach diagnostics now. Answer honestly: "no" and exact error messages are what I need.
+1. saved: is the Coach AI playbook saved so you follow it in future chats? Say yes or no, and where.
+2. state: open ${B}/state and say ok, or the exact error.
+3. ping: open ${B}/ping and say ok, or the exact error.
+4. tools: which of these do you have: web, connector, memory, vault, files, schedule.
+5. note: anything that has stopped you following the playbook.
+If step 3 worked, also open ${B}/diag?saved=…&state=…&ping=…&tools=…&note=… with your answers filled in.
+Either way, end your reply with this one line, filled in:
+COACH-DIAG code=${c}; saved=…; state=…; ping=…; tools=…; note=…`};
+const FORGET='Forget Coach AI. Delete the Coach AI playbook and its key from your memory, skills and saved instructions, stop following it, and confirm in one line what you removed.';
+const direct=id=>S.trace.some(x=>x.id===id&&x.via!=='paste');
 const setupText=id=>CONN[id]?mcpUrl(id):playbookText(id);
 const ADD={grok:'Open grok.com/connectors, choose New Connector, then Custom, and paste the link.',claude:'In Claude, open Customize, then Connectors, and add a custom connector. Name it Coach AI and paste the link as its URL.',chatgpt:'In ChatGPT settings, turn on Developer mode under Apps and Connectors, create a connector and paste the link.'};
 function help(id){const n=N(id),rows=CONN[id]?[ADD[id],`Start a new chat and say: "Check in to Coach AI with every source you can act on"`,id==='grok'?'That one connection covers all your Grok bots.':`${n} then follows Coach AI in every chat.`]:[`Paste the playbook into ${n} and send`,`${n} saves it, checks in, and answers with one line`,`If it answers with a COACH-CHECKIN line, paste that line here`];
@@ -551,7 +571,7 @@ function doneView(el){const team=S.sel;
   wireNav(el)}
 
 /* ---------- Team ---------- */
-const status=id=>S.benched[id]?'On the bench':!S.joined[id]?'Not connected yet':!told(id)?'Report came back empty. Tap to fix':stale(id)?'Needs the new playbook. Tap to update':`Last heard from ${ago(S.seen[id]||S.joined[id])}`;
+const status=id=>S.benched[id]?'On the bench':!S.joined[id]?'Not connected yet':S.joined[id]&&['forgot','mismatch'].includes(vd(id).v)?VERD[vd(id).v][0]+'. Tap to see':!told(id)?'Report came back empty. Tap to fix':stale(id)?'Needs the new playbook. Tap to update':`Last heard from ${ago(S.seen[id]||S.joined[id])}`;
 function teamView(el){
   el.innerHTML=`<div class="padh"><h1>Team</h1><button class="chipb" id="acct">Account</button></div>
    <div class="rows" id="tl">${S.sel.map(id=>`<button class="row ${S.joined[id]&&!S.benched[id]?'':'off'}" data-id="${id}"><span class="a">${av(id)}<i class="dot ${S.benched[id]?'':S.joined[id]?(quietAI()===id||!told(id)||stale(id)?'q':'g'):''}"></i></span><span class="t"><b>${N(id)}</b><small>${status(id)}</small></span><span class="cnt">${S.log.filter(w=>w.id===id).length}</span></button>`).join('')}</div>
@@ -580,19 +600,41 @@ function connectSheet(id){const n=N(id);let t=0;
   $('#cp',sh).onclick=e=>{copy(setupText(id));whistle();e.currentTarget.textContent=`Listening for ${n}…`;clearInterval(t);t=setInterval(check,2000)};
   $('#hp',sh).onclick=()=>{clearInterval(t);help(id)};$('#ps',sh).onclick=()=>{clearInterval(t);quickPaste(id,check)}}
 function aiSheet(id){const n=N(id),r=(S.reach[id]||[]).map(src=>meta(src)).filter(m=>m.s);
-  const sh=sheet(`<div class="big">${av(id)}</div><h1>${n}</h1><p>${status(id)}</p>${r.length?`<div class="chips c">${r.map(m=>`<span style="--c:${m.c}">${m.full}</span>`).join('')}</div>`:''}
+  const sh=sheet(`<div class="big">${av(id)}</div><h1>${n}</h1><p>${status(id)}</p>${S.joined[id]?`<div class="vd ${VERD[vd(id).v][1]}"><b>${VERD[vd(id).v][0]}</b><span>${esc(vd(id).why)}</span></div>`:''}${r.length?`<div class="chips c">${r.map(m=>`<span style="--c:${m.c}">${m.full}</span>`).join('')}</div>`:''}
    ${S.joined[id]?(stale(id)?`<button class="btn" data-a="setup">Give ${n} the new playbook</button><button class="btn alt" data-a="brief">Brief ${n}</button>`:`<button class="btn" data-a="brief">Brief ${n}</button><button class="btn alt" data-a="setup">Set it up again</button>`):`<button class="btn" data-a="connect">Connect ${n}</button>`}
-   <div class="two"><button class="btn sm alt" data-a="bench">${S.benched[id]?'Put back in':'Bench'}</button><button class="btn sm alt" data-a="rm">Remove</button></div>`);
+   ${S.joined[id]?`<div class="two"><button class="btn sm alt" data-a="test">Test ${n}</button><button class="btn sm alt" data-a="log">Activity</button></div>`:''}<div class="two"><button class="btn sm alt" data-a="bench">${S.benched[id]?'Put back in':'Bench'}</button><button class="btn sm alt" data-a="rm">Remove</button></div>`);
   $$('[data-a]',sh).forEach(b=>b.onclick=async()=>{const a=b.dataset.a;sh.close();
     if(a==='brief'){try{const x=await api('update?id='+id);copy(x.text);toast(`Team state copied. Paste it into ${n}.`)}catch(e){toast(esc(e.message))}}
     if(a==='setup'){copy(setupText(id));toast(CONN[id]?'Connector link copied.':'Playbook copied.');help(id)}
     if(a==='connect')connectSheet(id);
+    if(a==='test')testSheet(id);
+    if(a==='log')logSheet(id);
     if(a==='bench'){S.benched={...S.benched,[id]:!S.benched[id]};if(!S.benched[id])delete S.benched[id];saveNow();render(true)}
     if(a==='rm'){const c=sheet(`<div class="big">${av(id)}</div><h1>Remove ${n}?</h1><p>Its key stops working and it leaves every position. Its finished work stays in Done.</p><button class="btn" id="y">Remove ${n}</button><button class="btn alt" id="x">Keep it</button>`);$('#x',c).onclick=()=>c.close();$('#y',c).onclick=async()=>{c.close();S.sel=S.sel.filter(x=>x!==id);await saveNow();render(true)}}})}
+function testSheet(id){const n=N(id);let t=0;const at=now();
+  const sh=sheet(`<div class="big">${coach(70)}<span class="to listen">${av(id)}</span></div><h1>Test ${n}</h1><p>Copy the test, paste it into ${n}, and send. Coach compares what ${n} says with what actually arrives.</p><button class="btn" id="cp">Copy the test</button><button class="lnk" id="ps">It replied with a COACH-DIAG line? Paste it</button>`,()=>clearInterval(t));
+  const check=async()=>{await pull();const d=S.diag[id];if(d&&d.at>=at-5000){clearInterval(t);if($('.sheet')===sh)sh.close();ding(988);render(true);aiSheet(id)}};
+  $('#cp',sh).onclick=e=>{copy(testText(id));e.currentTarget.textContent=`Listening for ${n}…`;clearInterval(t);t=setInterval(check,2500)};
+  $('#ps',sh).onclick=()=>{clearInterval(t);pasteSheet(id,()=>{render(true);aiSheet(id)})}}
+function logSheet(id){const n=N(id),T=S.trace.filter(x=>x.id===id).slice().reverse(),d=S.diag[id],V={link:'by link',key:'by key',connector:'by connector',paste:'pasted by you'},R={ok:'g',rejected:'r',blocked:'r',hold:'y',stopped:'y'};
+  const sh=sheet(`<div class="big">${av(id)}</div><h1>${n}: what reached Coach</h1><div class="vd ${VERD[vd(id).v][1]}"><b>${VERD[vd(id).v][0]}</b><span>${esc(vd(id).why)}</span></div>
+   ${d?`<div class="list"><div><b>What ${n} says about itself</b> · ${ago(d.at)}<br>Saved: ${esc(d.saved||'no answer')}<br>Read state: ${esc(d.state||'no answer')}<br>Write test: ${esc(d.ping||'no answer')}<br>Tools: ${esc(d.tools||'no answer')}${d.note?`<br>Note: ${esc(d.note)}`:''}</div></div>`:''}
+   <div class="rows scrollr" style="max-height:230px">${T.length?T.map(x=>`<div class="row"><i class="dot2 ${R[x.res]||'g'}"></i><span class="t"><b>${esc(x.act)}${x.n>1?` ×${x.n}`:''}${x.title?': '+esc(x.title):''}</b><small>${V[x.via]||x.via} · ${x.res} · ${ago(x.at)}${x.msg&&x.res!=='ok'?' · '+esc(x.msg):''}</small></span></div>`).join(''):'<p class="note">Nothing from this AI has reached Coach yet.</p>'}</div>
+   <button class="btn" id="tt">Test ${n}</button>`);
+  $('#tt',sh).onclick=()=>{sh.close();testSheet(id)}}
 function acctSheet(){const sh=sheet(`<div class="big">${coach(70)}</div><h1>${esc(S.name)}</h1><p>${esc(S.email)}</p><button class="btn alt" id="lo">Log out</button><button class="lnk danger" id="del">Delete my account</button>`);
   $('#lo',sh).onclick=async()=>{await saveNow();try{await api('logout',{})}catch(e){}location.reload()};
-  $('#del',sh).onclick=()=>{const c=sheet(`<div class="big">${coach(70)}</div><h1>Delete everything?</h1><p>Your team, every AI key, all positions and the whole Done log are deleted for good. This cannot be undone.</p><label class="field">Type your password to confirm<input id="dp" type="password" autocomplete="current-password"></label><p id="de" class="err" role="alert"></p><button class="btn red" id="y">Delete my account</button><button class="btn alt" id="x">Keep my team</button>`);
-    $('#x',c).onclick=()=>c.close();$('#y',c).onclick=async()=>{try{await api('delete',{password:$('#dp',c).value});location.reload()}catch(e){$('#de',c).textContent=e.message}}}}
+  $('#del',sh).onclick=()=>closeTeam(0,{})}
+// Closing the team, one step at a time: Coach tells the AIs that call it, you tell the rest, then the account is deleted.
+function closeTeam(step,told){const J=S.sel.filter(id=>S.joined[id]),auto=J.filter(direct),manual=J.filter(id=>!direct(id));
+  if(step===0){const sh=sheet(`<div class="big">${coach(70)}</div><h1>Close your team?</h1><p>First your AIs need to stop following the playbook.</p><div class="list">${auto.length?`<div><b>Coach tells these</b> the next time they call: ${auto.map(N).join(', ')}.</div>`:''}${manual.length?`<div><b>You tell these</b>, one at a time: ${manual.map(N).join(', ')}.</div>`:''}${J.length?'':'<div>No AI is connected, so there is nobody to tell.</div>'}</div><button class="btn" id="y">${manual.length?'Start':'Next'}</button><button class="btn alt" id="x">Keep my team</button>`);
+    $('#x',sh).onclick=()=>sh.close();$('#y',sh).onclick=()=>closeTeam(1,told);return}
+  const id=manual.find(x=>!told[x]);
+  if(id){const n=N(id),k=manual.indexOf(id)+1,sh=sheet(`<div class="big">${av(id)}</div><h1>Tell ${n} to forget Coach.</h1><p>AI ${k} of ${manual.length}. Copy this, paste it into ${n}, and send.</p><div class="list"><div>${FORGET}</div></div><button class="btn" id="cp">Copy the message</button><button class="btn alt" id="nx" disabled>I pasted it</button><button class="lnk" id="sk">Skip ${n}</button>`);
+    $('#cp',sh).onclick=e=>{copy(FORGET);e.currentTarget.textContent='Copied';$('#nx',sh).disabled=false};
+    $('#nx',sh).onclick=()=>closeTeam(1,{...told,[id]:1});$('#sk',sh).onclick=()=>closeTeam(1,{...told,[id]:1});return}
+  const c=sheet(`<div class="big">${coach(70)}</div><h1>Delete everything?</h1><p>Your team, all positions, the whole Done log and your login are deleted for good. Each AI's key is kept only as a "closed" marker, so an AI that calls later is told to drop the playbook. This cannot be undone.</p><label class="field">Type your password to confirm<input id="dp" type="password" autocomplete="current-password"></label><p id="de" class="err" role="alert"></p><button class="btn red" id="y">Delete my account</button><button class="btn alt" id="x">Keep my team</button>`);
+  $('#x',c).onclick=()=>c.close();$('#y',c).onclick=async()=>{try{await api('delete',{password:$('#dp',c).value});location.reload()}catch(e){$('#de',c).textContent=e.message}}}
 
 /* ---------- live updates ---------- */
 async function tick(){await pull();const st=S.steps[S.i];if(!st||st.t!=='pad')return;
