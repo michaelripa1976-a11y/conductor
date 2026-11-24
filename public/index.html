@@ -1065,9 +1065,17 @@ CONDUCTOR-CLAIM code=${c}; mission=...; task=...
 CONDUCTOR-DONE code=${c}; mission=...; task=...; link=...; minutes=...
 Missions: money, email, calendar, code, home, writing, social, research.
 
-SECURE SETUP (better, if your app can save an API key): save ONLY the key (it starts with cdr_, the owner copies it from Conductor) and send it as the header "Authorization: Bearer <key>" to ${location.origin}/api/agent/state, /claim, /done and /checkin, with the same fields as the links. Test it first with ${location.origin}/api/agent/whoami. Then the links above are not needed.
+IF YOU HAVE A VAULT OR SECRET STORE, use it instead of the links. Do this yourself, without asking me:
+- Save this key as a secret named CONDUCTOR_KEY: ${S.keys[id]}
+- Send it as the header "Authorization: Bearer <key>" to ${location.origin}/api/agent/state, /claim, /done and /checkin (same fields as the links, GET or POST).
+- Test it once with ${location.origin}/api/agent/whoami. It should answer with your name and my team.
 
-RIGHT NOW: save this skill, then check in. good = missions you are good at, reach = what you can access (inbox, calendar, files). No links or tools? Reply with: CONDUCTOR-CHECKIN code=${c}; good=...; reach=...`}
+RIGHT NOW, do all of this yourself in one go, with no questions back to me:
+1. Save this skill.
+2. Store the key in your vault if you have one, and run the test.
+3. Check in. good = missions you are good at, reach = what you can access (inbox, calendar, files).
+4. Reply with one line: where you saved the skill, how you reach Conductor (connector, vault key or links), and what the check-in answered.
+No links, tools or vault? Reply with only: CONDUCTOR-CHECKIN code=${c}; good=...; reach=...`}
 const CONN={grok:1,claude:1,chatgpt:1};
 const setupText=id=>CONN[id]?mcpUrl(id):playbookText(id);
 const ADD={grok:'Open grok.com/connectors, choose New Connector, then Custom, and paste the link.',claude:'In Claude, open Settings, then Connectors, add a custom connector and paste the link.',chatgpt:'In ChatGPT settings, turn on Developer mode under Apps and Connectors, create a connector and paste the link.'};
