@@ -1,9 +1,9 @@
-// Conductor API. One function handles everything:
-//   /api/*        the coach's browser (session cookie)
+// Coach AI API. One function handles everything:
+//   /api/*        the owner's browser (session cookie)
 //   /a/<key>/*    an AI's own links (the key is the AI's identity)
 import crypto from 'node:crypto';
 import { getDoc, putDoc, delDoc, updateDoc, Exists, Conflict, Busy, storageKind } from '../lib/store.js';
-import { MISSIONS, MISSION_NAME, AI_NAME, AI_ORDER, toMission, toMissions, clean, cleanLink, aiName, live, owners, norm, newTeam, stateText } from '../lib/logic.js';
+import { SPACES, SPACE_NAME, ALL, AI_ORDER, toSources, toSource, clean, cleanLink, aiName, live, owners, reachers, conflicts, inScope, scopeSpaces, isShared, srcName, spaceOf, norm, newTeam, upgrade, stateText } from '../lib/logic.js';
 
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
@@ -35,22 +35,25 @@ function sessionUid(req) {
 }
 const scrypt = (pw, salt) => new Promise((ok, no) => crypto.scrypt(pw, salt, 32, (e, k) => (e ? no(e) : ok(k.toString('hex')))));
 
-// What the browser gets. Keys are included: the coach needs them to copy playbooks.
+// What the browser gets. Keys are included: the owner needs them to copy playbooks.
 function view(t) {
-  return { name: t.name, email: t.email, team: t.team, otherName: t.otherName, sel: t.sel, keys: t.keys, codes: t.codes, joined: t.joined, skipped: t.skipped, benched: t.benched,
-    rep: t.rep, seen: t.seen, decided: t.decided, presets: t.presets, over: t.over, extra: t.extra, chief: t.chief, mode: t.mode, focus: t.focus, quiet: t.quiet,
-    onboarded: t.onboarded, log: t.log.slice(-600), tasks: t.tasks.filter(x => x.status === 'open').slice(-100), needs: t.needs, blocked: t.blocked, now: Date.now() };
+  const own = {}, can = {};
+  for (const src of inScope(t)) { own[src] = owners(t, src); can[src] = reachers(t, src); }
+  return { name: t.name, email: t.email, team: t.team, otherName: t.otherName, scope: t.scope, sel: t.sel, keys: t.keys, codes: t.codes, joined: t.joined, skipped: t.skipped, benched: t.benched,
+    reach: t.reach, seen: t.seen, pick: t.own, own, can, conflicts: conflicts(t), mode: t.mode, quiet: t.quiet, onboarded: t.onboarded, play: t.play || 0,
+    log: t.log.slice(-600), tasks: t.tasks.filter(x => x.status === 'open').slice(-100), needs: t.needs, blocked: t.blocked, now: Date.now() };
 }
 const addNeed = (t, n) => { if (t.needs.length < 30 && !t.needs.some(x => x.sig === n.sig)) t.needs.push({ k: 'n' + (++t.n), at: Date.now(), ...n }); };
+const nudge = (t, id, m) => { t.nudges = t.nudges || {}; (t.nudges[id] = t.nudges[id] || []).push(m); t.nudges[id] = t.nudges[id].slice(-5); };
 function sweep(t) { // tasks claimed more than 48h ago with no report
   let changed = false;
-  for (const x of t.tasks) if (x.status === 'open' && Date.now() - x.at > 48 * 36e5 && !x.flag) { x.flag = 1; addNeed(t, { t: 'stall', a: x.id, title: x.title, task: x.k, sig: 'stall:' + x.k }); changed = true; }
+  for (const x of t.tasks) if (x.status === 'open' && Date.now() - x.at > 48 * 36e5 && !x.flag) { x.flag = 1; addNeed(t, { t: 'stall', a: x.id, title: x.title, task: x.k, src: x.src, sig: 'stall:' + x.k }); changed = true; }
   return changed;
 }
 
-/* ---------- things an AI can do (by link or by pasted line) ---------- */
+/* ---------- things an AI can do (by link, by connector, or by pasted line) ---------- */
 // A task title has to say what the task is. Template text and one-word stand-ins are refused.
-const PLACEHOLDERS = ['SHORT TITLE', 'TASK', 'MISSION', 'TITLE', 'TASK TITLE', 'SHORT TASK TITLE', 'YOUR TASK'];
+const PLACEHOLDERS = ['SHORT TITLE', 'TASK', 'MISSION', 'SOURCE', 'TITLE', 'TASK TITLE', 'SHORT TASK TITLE', 'YOUR TASK'];
 function badTitle(title) {
   const n = String(title || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
   if (!n) return 'REJECTED. The task title is missing. Send a real short title that says what the task is, for example "Reply to landlord about the lease".';
@@ -58,49 +61,55 @@ function badTitle(title) {
   if (PLACEHOLDERS.includes(n)) return `REJECTED. "${title}" is placeholder text, not a task. Send a real short title that says what the task is.`;
   return '';
 }
-function join(t, id) { if (!t.joined[id]) { t.joined[id] = Date.now(); delete t.skipped[id]; if (!t.rep[id]) t.rep[id] = { d: [], reach: [] }; } }
-
-function doCheckin(t, id, good, reach) {
-  const first = !t.joined[id];
-  t.joined[id] = t.joined[id] || Date.now(); delete t.skipped[id]; t.seen[id] = Date.now();
-  const d = toMissions(good), r = String(reach || '').split(/[,;|]/).map(x => clean(x, 24)).filter(Boolean).slice(0, 4);
-  if (first || d.length || r.length) t.rep[id] = { d: d.length ? d : ((t.rep[id] && t.rep[id].d) || []), reach: r.length ? r : ((t.rep[id] && t.rep[id].reach) || []) };
-  return `Checked in. Welcome to the team, ${aiName(t, id)}.\n` + (d.length ? `Recorded what you are good at: ${d.map(x => MISSION_NAME[x]).join(', ')}.\n` : 'You did not name any missions yet, so the coach will pick a starting role.\n') + 'The coach decides who owns each mission. Read the team state before every task.\n\n' + stateText(t, id);
+function join(t, id) { if (!t.joined[id]) { t.joined[id] = Date.now(); delete t.skipped[id]; } if (!Array.isArray(t.reach[id])) t.reach[id] = []; }
+const SRC_HELP = () => `Name the source as board:source, one of: ${ALL.join(', ')}.`;
+function doCheckin(t, id, reach) {
+  join(t, id); t.seen[id] = Date.now();
+  const r = toSources(reach, t);
+  if (r.length || !t.reach[id].length) t.reach[id] = r;
+  return `Checked in. Welcome to the team, ${aiName(t, id)}.\n` + (r.length ? `Recorded what you can act on: ${r.map(srcName).join(', ')}.\n` : `You did not name any source you can act on. ${SRC_HELP()}\n`) + 'The owner decides who acts where. Read the team state before every task.\n\n' + stateText(t, id);
 }
-function doClaim(t, id, mission, task, bot) {
-  t.seen[id] = Date.now(); const by = clean(bot, 24);
-  const title = clean(task, 90), d = toMission(mission) || toMission(task);
+function doClaim(t, id, source, task, bot) {
+  t.seen[id] = Date.now(); const by = clean(bot, 24), title = clean(task, 90);
   const bad = badTitle(title); if (bad) return bad;
   join(t, id);
+  const guess = toSources(task, t), src = toSource(source, t) || (guess.length === 1 ? guess[0] : null); // never guess between two boards
+  if (!src) return `REJECTED. Which source does this task touch? ${SRC_HELP()}`;
   if (t.benched[id]) return 'You are on the bench. Do not act. You may still read the team state.';
-  if (t.mode !== 'on') return `Conductor is ${t.mode === 'pause' ? 'PAUSED' : 'OFF'}. Do not start this task. Tell the coach.`;
-  if (d) { const o = owners(t, d); if (o.length && !o.includes(id)) { addNeed(t, { t: 'wrong', a: id, o: o[0], u: d, title, sig: `wrong:${id}:${d}` }); return `BLOCKED. ${MISSION_NAME[d]} belongs to ${o.map(x => aiName(t, x)).join(' and ')}. Do not do this task. The coach has been told.`; } }
-  const dup = t.tasks.find(x => x.status === 'open' && x.id !== id && norm(x.title) === norm(title));
-  if (dup) { t.tasks.push({ k: 't' + (++t.n), id, title, d, at: Date.now(), status: 'open', hold: 1 }); addNeed(t, { t: 'dup', a: dup.id, b: id, title, sig: 'dup:' + norm(title) }); return `HOLD. ${aiName(t, dup.id)} already claimed "${dup.title}". Do not start. The coach will decide who keeps it.`; }
-  const mineOpen = t.tasks.find(x => x.status === 'open' && x.id === id && norm(x.title) === norm(title));
-  if (!mineOpen) t.tasks.push({ k: 't' + (++t.n), id, title, d, at: Date.now(), status: 'open', ...(by ? { by } : {}) });
-  if (t.tasks.length > 400) t.tasks = t.tasks.slice(-400);
-  return `CLAIMED. "${title}" is yours${d ? ' under ' + MISSION_NAME[d] : ''}. Report it when done.`;
+  const m = t.mode[spaceOf(src)] || 'on';
+  if (m !== 'on') return `The ${SPACE_NAME[spaceOf(src)]} board is ${m === 'pause' ? 'PAUSED' : 'OFF'}. Do not start this task. Tell the owner.`;
+  const mine = t.tasks.find(x => x.status === 'open' && x.id === id && x.src === src && norm(x.title) === norm(title));
+  const add = () => { if (!mine) t.tasks.push({ k: 't' + (++t.n), id, src, title, at: Date.now(), status: 'open', ...(by ? { by } : {}) }); if (t.tasks.length > 400) t.tasks = t.tasks.slice(-400); };
+  if (isShared(src)) { // shared: never blocked, only a heads-up when two pick up the same task
+    if (!t.reach[id].includes(src)) t.reach[id].push(src);
+    const other = t.tasks.find(x => x.status === 'open' && x.id !== id && x.src === src && norm(x.title) === norm(title));
+    add();
+    if (other) { addNeed(t, { t: 'overlap', a: other.id, b: id, src, title, sig: `overlap:${src}:${norm(title)}` }); return `CLAIMED. Heads up: ${aiName(t, other.id)} also has "${other.title}" open on ${srcName(src)}. Tell the owner before you both do it.`; }
+    return `CLAIMED. "${title}" is yours on ${srcName(src)} (shared). Report it when done.`;
+  }
+  let o = owners(t, src);
+  if (!o.length && !reachers(t, src).length) { if (!t.reach[id].includes(src)) t.reach[id].push(src); o = owners(t, src); } // nobody was on it: this AI takes the position
+  if (!o.length) { addNeed(t, { t: 'pick', src, a: id, title, sig: `pick:${src}` }); return `HOLD. The owner has not picked who acts on ${srcName(src)} yet. Do not start. The owner has been asked.`; }
+  if (!o.includes(id)) { addNeed(t, { t: 'wrong', a: id, o: o[0], src, title, sig: `wrong:${id}:${src}` }); return `BLOCKED. ${aiName(t, o[0])} acts on ${srcName(src)}. Do not do this task. The owner has been told.`; }
+  add();
+  return `CLAIMED. "${title}" is yours on ${srcName(src)}. Report it when done.`;
 }
-function doDone(t, id, mission, task, link, minutes, bot) {
-  t.seen[id] = Date.now(); let by = clean(bot, 24);
-  const title = clean(task, 90); let d = toMission(mission) || toMission(task);
+function doDone(t, id, source, task, link, minutes, bot) {
+  t.seen[id] = Date.now(); let by = clean(bot, 24); const title = clean(task, 90);
   const bad = badTitle(title); if (bad) return bad;
   join(t, id);
-  const open = t.tasks.find(x => x.status === 'open' && x.id === id && norm(x.title) === norm(title));
-  if (open) { open.status = 'done'; d = d || open.d; by = by || open.by || ''; }
-  if (!d) d = MISSIONS.find(m => owners(t, m).includes(id)) || 'research';
+  let src = toSource(source, t);
+  const open = t.tasks.find(x => x.status === 'open' && x.id === id && norm(x.title) === norm(title) && (!src || x.src === src));
+  if (open) { open.status = 'done'; src = src || open.src; by = by || open.by || ''; }
+  if (!src) src = toSource(task, t) || inScope(t).find(x => !isShared(x) && owners(t, x).includes(id)) || null;
   const min = Math.max(0, Math.min(600, Math.round(+minutes || 0)));
-  t.log.push({ k: 'w' + (++t.n), id, d, text: title, link: cleanLink(link), min, at: Date.now(), ...(by ? { by } : {}) });
+  t.log.push({ k: 'w' + (++t.n), id, src, text: title, link: cleanLink(link), min, at: Date.now(), ...(by ? { by } : {}) });
   if (t.log.length > 3000) t.log = t.log.slice(-3000);
-  const o = owners(t, d);
-  if (o.length && !o.includes(id)) addNeed(t, { t: 'wrong', a: id, o: o[0], u: d, title, sig: `wrong:${id}:${d}` });
-  if (!o.length && t.log.filter(w => w.id === id && w.d === d).length >= 2) addNeed(t, { t: 'hand', a: id, u: d, sig: `hand:${id}:${d}` });
-  return `LOGGED. "${title}" is on the team log${d ? ' under ' + MISSION_NAME[d] : ''}. Thank you.`;
+  if (src && !isShared(src)) { const o = owners(t, src); if (o.length && !o.includes(id)) addNeed(t, { t: 'wrong', a: id, o: o[0], src, title, sig: `wrong:${id}:${src}` }); }
+  return `LOGGED. "${title}" is on the team log under ${srcName(src)}. Thank you.`;
 }
-function parsePairs(s) { const o = {}; for (const part of s.split(';')) { const i = part.indexOf('='); if (i > 0) o[part.slice(0, i).trim().toLowerCase()] = part.slice(i + 1).trim(); } return o; }
+function parsePairs(text) { const o = {}; for (const part of String(text).split(';')) { const i = part.indexOf('='); if (i > 0) o[part.slice(0, i).trim().toLowerCase()] = part.slice(i + 1).trim(); } return o; }
 
-/* ---------- AI links: /a/<key>/<action> ---------- */
 /* ---------- which key did the caller send? ---------- */
 const KEY_RE = /^cdr_[A-Za-z0-9_-]{16,80}$/;
 // Trim, URL-decode once, and pull the cdr_ token out if a whole link or "Bearer ..." was pasted.
@@ -117,7 +126,7 @@ function findKey(req, q, pathKey) {
   const raw = [/^bearer\s+/i.test(auth) ? auth.replace(/^bearer\s+/i, '') : '', h['x-conductor-key'], q.get('key'), pathKey].find(v => v != null && String(v).trim() !== '');
   if (raw == null) return { code: 401, text: 'No key sent. Send your Conductor key as "Authorization: Bearer <key>".' };
   const key = cleanKey(raw);
-  if (!KEY_RE.test(key)) { console.warn(`[conductor] key format not recognized: ${hint(key)}`); return { code: 401, text: 'Key format not recognized. A Conductor key starts with cdr_. Send only the key, with nothing around it.' }; }
+  if (!KEY_RE.test(key)) { console.warn(`[coach] key format not recognized: ${hint(key)}`); return { code: 401, text: 'Key format not recognized. A Conductor key starts with cdr_. Send only the key, with nothing around it.' }; }
   return { key };
 }
 // Best-effort brake on guessing. Counts per server instance, so it slows a burst but is not a hard limit.
@@ -128,7 +137,7 @@ function noteFail(req, key) {
   const ip = ipOf(req), f = FAILS.get(ip); const now = Date.now();
   if (!f || now - f.t > 10 * 60e3) FAILS.set(ip, { n: 1, t: now }); else f.n++;
   if (FAILS.size > 5000) FAILS.clear();
-  console.warn(`[conductor] key not found or revoked: ${hint(key)}`);
+  console.warn(`[coach] key not found or revoked: ${hint(key)}`);
 }
 const NOT_FOUND = 'Key not found or revoked. Ask the owner for a new key.';
 
@@ -139,33 +148,33 @@ async function runAgent(key, action, p) {
   const { uid, id } = map.data; let out = '';
   const bad = t => !Array.isArray(t.sel) || !t.sel.includes(id) || !t.keys || t.keys[id] !== key;
   const act = t => {
-    for (const m of ['joined', 'skipped', 'benched', 'rep', 'seen']) if (!t[m] || typeof t[m] !== 'object') t[m] = {};
+    upgrade(t);
     if (bad(t)) { out = NOT_FOUND; return false; }
-    if (action === 'checkin') out = doCheckin(t, id, p('good'), p('reach'));
-    else if (action === 'claim') out = doClaim(t, id, p('mission'), p('task'), p('bot'));
-    else if (action === 'done') out = doDone(t, id, p('mission'), p('task'), p('link'), p('minutes'), p('bot'));
+    if (action === 'checkin') out = doCheckin(t, id, p('reach') || p('good'));
+    else if (action === 'claim') out = doClaim(t, id, p('source') || p('mission'), p('task'), p('bot'));
+    else if (action === 'done') out = doDone(t, id, p('source') || p('mission'), p('task'), p('link'), p('minutes'), p('bot'));
     else { join(t, id); t.seen[id] = Date.now(); out = stateText(t, id); if (t.nudges && t.nudges[id]) delete t.nudges[id]; }
   };
   if (action === 'whoami') { // "test my key": who am I, on whose team. Changes nothing.
     const cur = await getDoc(teamDoc(uid));
     if (!cur || bad(cur.data)) return { code: 404, text: NOT_FOUND, miss: true };
-    const t = cur.data;
-    return { code: 200, json: { ok: true, agent: aiName(t, id), team: t.team || `Team ${t.name}`, owner: t.name, switch: t.mode, checkedIn: !!(t.joined && t.joined[id]), missions: MISSIONS.filter(d => owners(t, d).includes(id)) } };
+    const t = upgrade(cur.data);
+    return { code: 200, json: { ok: true, agent: aiName(t, id), team: t.team || `Team ${t.name}`, owner: t.name, boards: Object.fromEntries(scopeSpaces(t).map(s => [s, t.mode[s]])), checkedIn: !!t.joined[id], sources: inScope(t).filter(src => owners(t, src).includes(id)) } };
   }
   if (action === 'state') { // reading never depends on a write: answer from what is stored, then record the visit if we can
     const cur = await getDoc(teamDoc(uid));
     if (!cur) return { code: 404, text: 'Team not found.' };
     if (bad(cur.data)) return { code: 404, text: NOT_FOUND, miss: true };
-    out = stateText(cur.data, id);
-    try { await updateDoc(teamDoc(uid), act); } catch (e) { console.error('[conductor] state: could not record the visit', e && e.stack ? e.stack : e); }
+    out = stateText(upgrade(cur.data), id);
+    try { await updateDoc(teamDoc(uid), act); } catch (e) { console.error('[coach] state: could not record the visit', e && e.stack ? e.stack : e); }
     return { code: 200, text: out };
   }
   let t;
   try { t = await updateDoc(teamDoc(uid), act); }
   catch (e) {
     if (!(e instanceof Busy)) throw e;
-    console.error(`[conductor] ${action}: team file busy after retries`);
-    return { code: 503, text: 'Conductor is busy right now. Nothing was recorded. Wait a few seconds and try again.' };
+    console.error(`[coach] ${action}: team file busy after retries`);
+    return { code: 503, text: 'Coach AI is busy right now. Nothing was recorded. Wait a few seconds and try again.' };
   }
   if (!t) return { code: 404, text: 'Team not found.' };
   if (out === NOT_FOUND) return { code: 404, text: out, miss: true };
@@ -182,16 +191,16 @@ async function agent(req, res, action, q, pathKey) {
   return send(res, r.code, r.json || r.text);
 }
 
-/* ---------- connector: /mcp/<key> (Model Context Protocol, stateless Streamable HTTP) ---------- */
+/* ---------- connector: /mcp/<key> or /mcp with a Bearer key (Model Context Protocol, stateless Streamable HTTP) ---------- */
 const MCP_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
-const MISSION_ENUM = { type: 'string', enum: MISSIONS, description: 'Which mission the task belongs to.' };
-const MCP_RULES = "You are connected to Conductor, the owner's shared list of which AI owns which mission (money, email, calendar, code, home, writing, social, research). Before any request to do, make, send, change, schedule or draft something (not plain questions): (1) call conductor_state; if the switch is PAUSED or OFF, don't act and tell the user. (2) Read anything, but act only on missions listed under 'Your missions'; if another AI owns it, tell the user who. (3) Call conductor_claim with the mission and a real short title; if the reply starts with BLOCKED or HOLD, stop and tell the user. (4) Do the work; a claim is never approval to send or delete anything. (5) Call conductor_done with the mission, the title, a link if any and honest minutes saved, then end the reply with 'Conductor: reported'. For scheduled or background runs, only claim and report when the run actually sends, changes or creates something. The first time you are connected, call conductor_checkin once. If several bots share this connection, each one puts its own name in the bot field.";
+const SRC_ENUM = { type: 'string', enum: ALL, description: 'The source the task touches, as board:source.' };
+const MCP_RULES = "You are connected to Coach AI, the owner's shared list of which AI acts on which source. There are two boards, personal and work, and each source is named board:source (for example work:email, personal:calendar). Before any request to do, make, send, change, schedule or draft something (not plain questions): (1) call coach_state; if that board is PAUSED or OFF, don't act and tell the user. (2) Read anything, but act only on sources listed under 'Sources you act on' or on a shared source; if another AI acts on it, tell the user who. (3) Call coach_claim with the source and a real short title; if the reply starts with BLOCKED or HOLD, stop and tell the user. (4) Do the work; a claim is never approval to send or delete anything. (5) Call coach_done with the source, the title, a link if any and honest minutes saved, then end the reply with 'Coach: reported'. For scheduled or background runs, only claim and report when the run actually sends, changes or creates something. The first time you are connected, call coach_checkin once with every source you can really act on. If several bots share this connection, each one puts its own name in the bot field.";
 const BOT_FIELD = { type: 'string', description: 'Your own bot or assistant name, when several bots share this connection (for example "Instagram posts"). Shown to the owner next to the AI name.' };
 const MCP_TOOLS = [
-  { name: 'conductor_state', title: 'Read team state', description: 'Call first before any do/send/change/draft/schedule task. Returns the switch (ON, PAUSED or OFF), your missions, which AI owns each mission, open tasks, recent finished work and messages from the owner. If the switch is PAUSED or OFF, do not act; tell the user.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true } },
-  { name: 'conductor_checkin', title: 'Check in', description: 'Call once, the first time you are connected, and again only if what you can do changes. Tells the owner what you are good at and what you can reach.', inputSchema: { type: 'object', properties: { good: { type: 'string', description: 'Up to 3 missions you are good at, comma-separated, from: ' + MISSIONS.join(', ') }, reach: { type: 'string', description: 'What you can access, comma-separated, for example: inbox, calendar, files' } }, additionalProperties: false } },
-  { name: 'conductor_claim', title: 'Claim a task', description: 'REQUIRED before acting on any mission task. Use a real short task title that says what the task is; placeholder text is rejected. If the reply starts with BLOCKED or HOLD, stop and tell the user. A claim is never approval to send or delete anything.', inputSchema: { type: 'object', properties: { mission: MISSION_ENUM, task: { type: 'string', minLength: 4, description: 'Real short task title, 4 to 90 characters, for example "Reply to landlord about the lease".' }, bot: BOT_FIELD }, required: ['task'], additionalProperties: false } },
-  { name: 'conductor_done', title: 'Report a finished task', description: 'REQUIRED right after you finish a task you claimed. Send the mission, the same title, a link if one exists and honest minutes saved. Then end your reply with "Conductor: reported".', inputSchema: { type: 'object', properties: { mission: MISSION_ENUM, task: { type: 'string', minLength: 4, description: 'The same real short title you claimed.' }, link: { type: 'string', description: 'https link to the result, if one exists.' }, minutes: { type: 'number', description: 'Your honest estimate of minutes saved for the owner.' }, bot: BOT_FIELD }, required: ['task'], additionalProperties: false } },
+  { name: 'coach_state', title: 'Read team state', description: 'Call first before any do/send/change/draft/schedule task. Returns each board\'s switch (ON, PAUSED or OFF), the sources you act on, the shared sources, which AI acts on every source, open tasks, recent finished work and messages from the owner.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true } },
+  { name: 'coach_checkin', title: 'Check in', description: 'Call once, the first time you are connected, and again only if what you can reach changes. List every source you can really ACT on (send, change, create), not just read.', inputSchema: { type: 'object', properties: { reach: { type: 'string', description: 'Comma-separated sources you can act on, each as board:source. Choose from: ' + ALL.join(', ') } }, required: ['reach'], additionalProperties: false } },
+  { name: 'coach_claim', title: 'Claim a task', description: 'REQUIRED before acting on any source. Use a real short task title that says what the task is; placeholder text is rejected. If the reply starts with BLOCKED or HOLD, stop and tell the user. A claim is never approval to send or delete anything.', inputSchema: { type: 'object', properties: { source: SRC_ENUM, task: { type: 'string', minLength: 4, description: 'Real short task title, 4 to 90 characters, for example "Reply to landlord about the lease".' }, bot: BOT_FIELD }, required: ['source', 'task'], additionalProperties: false } },
+  { name: 'coach_done', title: 'Report a finished task', description: 'REQUIRED right after you finish a task you claimed. Send the source, the same title, a link if one exists and honest minutes saved. Then end your reply with "Coach: reported".', inputSchema: { type: 'object', properties: { source: SRC_ENUM, task: { type: 'string', minLength: 4, description: 'The same real short title you claimed.' }, link: { type: 'string', description: 'https link to the result, if one exists.' }, minutes: { type: 'number', description: 'Your honest estimate of minutes saved for the owner.' }, bot: BOT_FIELD }, required: ['task'], additionalProperties: false } },
 ];
 async function mcp(req, res, parts) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -209,16 +218,16 @@ async function mcp(req, res, parts) {
     const ok = result => ({ jsonrpc: '2.0', id: m.id, result });
     if (m.method === 'initialize') {
       const v = m.params && MCP_VERSIONS.includes(m.params.protocolVersion) ? m.params.protocolVersion : MCP_VERSIONS[0];
-      return ok({ protocolVersion: v, capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'conductor', title: 'Conductor', version: '1.0.0' }, instructions: MCP_RULES });
+      return ok({ protocolVersion: v, capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'coach-ai', title: 'Coach AI', version: '2.0.0' }, instructions: MCP_RULES });
     }
     if (m.method === 'ping') return ok({});
     if (m.method === 'tools/list') return ok({ tools: MCP_TOOLS });
     if (m.method === 'resources/list') return ok({ resources: [] });
     if (m.method === 'prompts/list') return ok({ prompts: [] });
     if (m.method === 'tools/call') {
-      const name = m.params && m.params.name, a = (m.params && m.params.arguments) || {};
+      const name = String((m.params && m.params.name) || '').replace(/^conductor_/, 'coach_'), a = (m.params && m.params.arguments) || {};
       if (!MCP_TOOLS.some(t => t.name === name)) return { jsonrpc: '2.0', id: m.id, error: { code: -32602, message: 'Unknown tool.' } };
-      const r = await runAgent(key, name.replace('conductor_', ''), k => (a[k] == null ? null : String(a[k])));
+      const r = await runAgent(key, name.replace('coach_', ''), n => (a[n] == null ? null : String(a[n])));
       if (r.miss) noteFail(req, key);
       return ok({ content: [{ type: 'text', text: r.text }], isError: r.code !== 200 });
     }
@@ -230,7 +239,7 @@ async function mcp(req, res, parts) {
   return send(res, 200, out);
 }
 
-/* ---------- coach's browser: /api/<action> ---------- */
+/* ---------- the owner's browser: /api/<action> ---------- */
 async function coach(req, res, parts, q) {
   const action = parts[0] || '';
   if (action === 'health') {
@@ -281,48 +290,49 @@ async function coach(req, res, parts, q) {
     const hash = await scrypt(String(b.password || ''), u ? u.data.salt : 'x');
     if (!u || hash.length !== u.data.hash.length || !crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(u.data.hash))) return send(res, 401, { error: 'Wrong email or password.' });
     const t = await getDoc(teamDoc(u.data.uid)); if (!t) return send(res, 401, { error: 'Team not found.' });
-    res.setHeader('Set-Cookie', sessionCookie(u.data.uid)); return send(res, 200, view(t.data));
+    res.setHeader('Set-Cookie', sessionCookie(u.data.uid)); return send(res, 200, view(upgrade(t.data)));
   }
   if (action === 'logout') { res.setHeader('Set-Cookie', 'cs=; Path=/; HttpOnly; Max-Age=0'); return send(res, 200, { ok: true }); }
 
   const uid = sessionUid(req); if (!uid) return send(res, 401, { error: 'Not signed in.' });
   const file = teamDoc(uid);
+  const up = fn => updateDoc(file, t => { upgrade(t); return fn(t); });
 
   if (action === 'state') {
     let cur = await getDoc(file); if (!cur) return send(res, 401, { error: 'Not signed in.' });
-    if (cur.data.tasks.some(x => x.status === 'open' && !x.flag && Date.now() - x.at > 48 * 36e5)) cur = { data: await updateDoc(file, t => sweep(t)) };
-    return send(res, 200, view(cur.data));
+    let t = upgrade(cur.data);
+    if (t.tasks.some(x => x.status === 'open' && !x.flag && Date.now() - x.at > 48 * 36e5)) t = await up(t => sweep(t));
+    return send(res, 200, view(t));
   }
   if (action === 'update') { // the text an AI would read, for pasting into a chat AI
     const cur = await getDoc(file), id = q.get('id'); if (!cur || !cur.data.sel.includes(id)) return send(res, 404, { error: 'Unknown AI.' });
-    return send(res, 200, { text: stateText(cur.data, id) });
+    return send(res, 200, { text: stateText(upgrade(cur.data), id) });
   }
   if (req.method !== 'POST') return send(res, 404, { error: 'Unknown action.' });
   const b = await readBody(req);
 
-  if (action === 'save') { // fields the coach controls
+  if (action === 'save') { // fields the owner controls
     const made = [], gone = [];
-    const t = await updateDoc(file, t => {
+    const t = await up(t => {
+      if (['personal', 'work', 'both'].includes(b.scope)) t.scope = b.scope;
       if (Array.isArray(b.sel)) {
         const sel = AI_ORDER.filter(id => b.sel.includes(id));
-        for (const id of t.sel) if (!sel.includes(id)) { gone.push(t.keys[id]); for (const m of ['keys', 'codes', 'joined', 'skipped', 'benched', 'rep', 'seen', 'presets']) delete t[m][id]; }
+        for (const id of t.sel) if (!sel.includes(id)) { gone.push(t.keys[id]); for (const m of ['keys', 'codes', 'joined', 'skipped', 'benched', 'reach', 'seen']) delete t[m][id]; }
         for (const id of sel) if (!t.keys[id]) { t.keys[id] = 'cdr_' + rid(21); t.codes[id] = rid(4).replace(/[-_]/g, 'x').toUpperCase().slice(0, 6); made.push([id, t.keys[id]]); }
         t.sel = sel;
       }
-      const ids = v => v && typeof v === 'object' && !Array.isArray(v);
-      if (ids(b.skipped)) { t.skipped = {}; for (const id of t.sel) if (b.skipped[id] && !t.joined[id]) t.skipped[id] = true; }
-      if (ids(b.benched)) { t.benched = {}; for (const id of t.sel) if (b.benched[id]) t.benched[id] = true; }
-      if (ids(b.decided)) { t.decided = {}; for (const d of MISSIONS) { const v = b.decided[d]; if (v === 'share' || t.sel.includes(v)) t.decided[d] = v; } }
-      if (ids(b.presets)) { t.presets = {}; for (const id of t.sel) if (MISSIONS.includes(b.presets[id])) t.presets[id] = b.presets[id]; }
-      if (ids(b.over)) { t.over = {}; for (const d of MISSIONS) if (Array.isArray(b.over[d])) t.over[d] = b.over[d].filter(id => t.sel.includes(id)).slice(0, 2); }
-      if (ids(b.extra)) { t.extra = {}; for (const d of MISSIONS) if (t.sel.includes(b.extra[d])) t.extra[d] = b.extra[d]; }
-      if ('chief' in b) t.chief = t.sel.includes(b.chief) ? b.chief : null;
-      if (['on', 'pause', 'off'].includes(b.mode)) t.mode = b.mode;
-      if ('focus' in b) t.focus = MISSIONS.includes(b.focus) ? b.focus : null;
+      const obj = v => v && typeof v === 'object' && !Array.isArray(v);
+      if (obj(b.skipped)) { t.skipped = {}; for (const id of t.sel) if (b.skipped[id] && !t.joined[id]) t.skipped[id] = true; }
+      if (obj(b.benched)) { t.benched = {}; for (const id of t.sel) if (b.benched[id]) t.benched[id] = true; }
+      if (obj(b.pick)) { t.own = {}; for (const src of ALL) if (!isShared(src) && t.sel.includes(b.pick[src])) t.own[src] = b.pick[src]; }
+      if (obj(b.mode)) for (const s of SPACES) if (['on', 'pause', 'off'].includes(b.mode[s])) t.mode[s] = b.mode[s];
       if ('team' in b) t.team = clean(b.team, 16) || null;
       if ('otherName' in b) t.otherName = clean(b.otherName, 14) || null;
       if ('quiet' in b) t.quiet = !!b.quiet;
       if (b.onboarded === true) t.onboarded = true;
+      if (Number.isInteger(b.play) && b.play >= 0 && b.play <= 9) t.play = Math.max(t.play || 0, b.play);
+      for (const src of Object.keys(t.own)) if (!t.sel.includes(t.own[src])) delete t.own[src];
+      t.needs = t.needs.filter(n => n.t !== 'pick' || conflicts(t).includes(n.src));
     });
     if (!t) return send(res, 401, { error: 'Not signed in.' });
     for (const [id, key] of made) await putDoc(keyDoc(key), { uid, id });
@@ -331,7 +341,7 @@ async function coach(req, res, parts, q) {
   }
   if (action === 'rekey') { // revoke one AI's key and issue a new one
     const id = String(b.id || ''); let old;
-    const t = await updateDoc(file, t => {
+    const t = await up(t => {
       if (!t.sel.includes(id)) return false;
       old = t.keys[id] || ''; t.keys[id] = 'cdr_' + rid(21); t.codes[id] = rid(4).replace(/[-_]/g, 'x').toUpperCase().slice(0, 6);
     });
@@ -343,51 +353,59 @@ async function coach(req, res, parts, q) {
   }
   if (action === 'task') { // the owner clears a claim that is stale or wrong
     let hit = null;
-    const t = await updateDoc(file, t => {
+    const t = await up(t => {
       const x = t.tasks.find(x => x.k === b.k && x.status === 'open'); if (!x) return false;
-      x.status = 'cleared'; hit = x;
-      const sig = 'dup:' + norm(x.title); if (!t.tasks.some(y => y.status === 'open' && y.hold && norm(y.title) === norm(x.title))) t.needs = t.needs.filter(n => n.sig !== sig && n.task !== x.k);
-      t.nudges = t.nudges || {}; (t.nudges[x.id] = t.nudges[x.id] || []).push(`The owner cleared your claim "${x.title}". Do not work on it unless you claim it again.`); t.nudges[x.id] = t.nudges[x.id].slice(-5);
+      x.status = 'cleared'; hit = x; t.needs = t.needs.filter(n => n.task !== x.k);
+      nudge(t, x.id, `The owner cleared your claim "${x.title}". Do not work on it unless you claim it again.`);
     });
     if (!t) return send(res, 401, { error: 'Not signed in.' });
     return hit ? send(res, 200, view(t)) : send(res, 404, { error: 'That claim is already gone.' });
   }
-  if (action === 'need') { // the coach answers a decision card
-    const t = await updateDoc(file, t => {
+  if (action === 'need') { // the owner answers a decision card
+    const t = await up(t => {
       const i = t.needs.findIndex(n => n.k === b.k); if (i < 0) return false;
       const n = t.needs[i], v = String(b.v || ''); t.needs.splice(i, 1);
-      const nudge = (id, m) => { t.nudges = t.nudges || {}; (t.nudges[id] = t.nudges[id] || []).push(m); t.nudges[id] = t.nudges[id].slice(-5); };
-      if (n.t === 'dup') {
-        const mine = t.tasks.filter(x => x.status === 'open' && norm(x.title) === norm(n.title));
-        if (v === n.a || v === n.b) { const loser = v === n.a ? n.b : n.a; for (const x of mine) { if (x.id === loser) x.status = 'blocked'; else delete x.hold; } t.blocked++; nudge(loser, `Stop work on "${n.title}". ${aiName(t, v)} keeps it.`); nudge(v, `"${n.title}" is yours. Go ahead.`); }
-        else for (const x of mine) { delete x.hold; nudge(x.id, `Split "${n.title}" with the other AI. Coordinate through the coach.`); }
+      if (n.t === 'pick' || n.t === 'wrong') { // v = the AI that acts on this source from now on
+        if (t.sel.includes(v) && ALL.includes(n.src) && !isShared(n.src)) {
+          t.own[n.src] = v; t.blocked++;
+          for (const id of new Set([n.a, n.o, ...reachers(t, n.src)])) if (id && t.sel.includes(id)) nudge(t, id, id === v ? `You act on ${srcName(n.src)} now.${n.title && id === n.a ? ` You may claim "${n.title}" again.` : ''}` : `${aiName(t, v)} acts on ${srcName(n.src)}. Do not act on it.`);
+        }
+      } else if (n.t === 'overlap') {
+        const mine = t.tasks.filter(x => x.status === 'open' && x.src === n.src && norm(x.title) === norm(n.title));
+        if (v === n.a || v === n.b) { const loser = v === n.a ? n.b : n.a; for (const x of mine) if (x.id === loser) x.status = 'cleared'; nudge(t, loser, `Stop work on "${n.title}". ${aiName(t, v)} keeps it.`); nudge(t, v, `"${n.title}" is yours. Go ahead.`); }
       } else if (n.t === 'stall') {
         const x = t.tasks.find(x => x.k === n.task);
-        if (v === 'nudge') nudge(n.a, `The coach wants an update on "${n.title}".`);
-        else if (x && t.sel.includes(b.b)) { x.id = b.b; x.at = Date.now(); delete x.flag; nudge(b.b, `You now own the task "${n.title}".`); nudge(n.a, `"${n.title}" was handed to ${aiName(t, b.b)}.`); }
-        else if (v === 'drop' && x) x.status = 'blocked';
-      } else if (n.t === 'wrong') {
-        if (v === 'share') { t.over[n.u] = [n.o, n.a].filter(id => t.sel.includes(id)); nudge(n.a, `You now share ${MISSION_NAME[n.u]}.`); }
-        else nudge(n.a, `${MISSION_NAME[n.u]} belongs to ${aiName(t, n.o)}. Do not act on it.`);
-      } else if (n.t === 'hand') { if (v === 'yes') { t.extra[n.u] = n.a; nudge(n.a, `${MISSION_NAME[n.u]} is officially yours.`); } }
+        if (v === 'nudge') nudge(t, n.a, `The owner wants an update on "${n.title}".`);
+        else if (v === 'drop' && x) { x.status = 'cleared'; nudge(t, n.a, `The owner dropped "${n.title}".`); }
+      }
     });
     return t ? send(res, 200, view(t)) : send(res, 401, { error: 'Not signed in.' });
   }
-  if (action === 'paste') { // a chat AI's reply, pasted in by the coach
+  if (action === 'paste') { // a chat AI's reply, pasted in by the owner
     const text = String(b.text || '').slice(0, 20000), results = [];
-    const lines = [...text.matchAll(/CONDUCTOR[-_ ](CHECKIN|CLAIM|DONE)\b[:\s]*([^\n\r]*)/gi)];
-    if (!lines.length) return send(res, 400, { error: 'No Conductor report found in that text. It should contain a line starting with CONDUCTOR-.' });
-    const t = await updateDoc(file, t => {
+    const lines = [...text.matchAll(/(?:COACH|CONDUCTOR)[-_ ](CHECKIN|CLAIM|DONE)\b[:\s]*([^\n\r]*)/gi)];
+    if (!lines.length) return send(res, 400, { error: 'No report found in that text. It should contain a line starting with COACH-.' });
+    const t = await up(t => {
       for (const m of lines.slice(0, 20)) {
         const kind = m[1].toUpperCase(), p = parsePairs(m[2].replace(/[*`]/g, ''));
         let id = t.sel.find(x => t.codes[x] && t.codes[x] === String(p.code || '').toUpperCase().trim());
         if (!id && t.sel.includes(b.id)) id = b.id;
         if (!id) { results.push({ ok: false, msg: 'Could not tell which AI this is from. The code is missing or wrong.' }); continue; }
-        const msg = kind === 'CHECKIN' ? doCheckin(t, id, p.good || p['good at'], p.reach || p['can reach']) : kind === 'CLAIM' ? doClaim(t, id, p.mission, p.task) : doDone(t, id, p.mission, p.task, p.link, p.minutes);
-        results.push({ ok: true, kind, id, msg: msg.split('\n')[0] });
+        const msg = kind === 'CHECKIN' ? doCheckin(t, id, p.reach || p['can reach'] || p.good) : kind === 'CLAIM' ? doClaim(t, id, p.source || p.mission, p.task, p.bot) : doDone(t, id, p.source || p.mission, p.task, p.link, p.minutes, p.bot);
+        results.push({ ok: !/^(REJECTED|BLOCKED|HOLD)/.test(msg), kind, id, msg: msg.split('\n')[0] });
       }
     });
     return t ? send(res, 200, { results, state: view(t) }) : send(res, 401, { error: 'Not signed in.' });
+  }
+  if (action === 'delete') { // delete the whole account: every key, the team and the login. Cannot be undone.
+    const cur = await getDoc(file); if (!cur) return send(res, 401, { error: 'Not signed in.' });
+    const u = await getDoc(userDoc(cur.data.email));
+    const hash = await scrypt(String(b.password || ''), u ? u.data.salt : 'x');
+    if (!u || u.data.uid !== uid || hash.length !== u.data.hash.length || !crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(u.data.hash))) return send(res, 403, { error: 'Wrong password. Nothing was deleted.' });
+    for (const key of Object.values(cur.data.keys || {})) if (key) await delDoc(keyDoc(key));
+    await delDoc(file); await delDoc(userDoc(cur.data.email));
+    res.setHeader('Set-Cookie', 'cs=; Path=/; HttpOnly; Max-Age=0');
+    return send(res, 200, { ok: true, deleted: true });
   }
   return send(res, 404, { error: 'Unknown action.' });
 }
@@ -404,7 +422,7 @@ export default async function handler(req, res) {
     return await coach(req, res, parts, q);
   } catch (e) {
     const ref = rid(4);
-    console.error(`[conductor ${ref}] ${req.method} ${String(req.url).replace(/cdr_[A-Za-z0-9_-]+/g, 'cdr_***')}`, e && e.stack ? e.stack : e);
+    console.error(`[coach ${ref}] ${req.method} ${String(req.url).replace(/cdr_[A-Za-z0-9_-]+/g, 'cdr_***')}`, e && e.stack ? e.stack : e);
     return send(res, 500, { error: 'Something went wrong on the server.', ref, kind: (e && e.name) || 'Error' });
   }
 }

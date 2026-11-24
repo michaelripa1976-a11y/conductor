@@ -3,1315 +3,540 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Conductor</title>
+<title>Coach AI</title>
 <meta name="robots" content="noindex">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='2' y='2' width='60' height='60' rx='17' fill='%235B4BFF'/%3E%3Cpath d='M45 19a18 18 0 1 0 0 26' stroke='%23fff' stroke-width='7' stroke-linecap='round' fill='none'/%3E%3Cpath d='M43 33L55 16' stroke='%23FFC83D' stroke-width='4.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cpath d='M20 80c0-27 17-46 40-46s40 19 40 46c0 20-15 30-40 30S20 100 20 80z' fill='%235B4BFF'/%3E%3Cpath d='M29 47c2-19 15-30 31-30s29 11 31 30z' fill='%23FFC83D'/%3E%3Cpath d='M27 44h66c9 0 18 3 23 9 1 2 0 3-2 3H27z' fill='%23F2A900'/%3E%3Ccircle cx='47' cy='68' r='8' fill='%23fff'/%3E%3Ccircle cx='73' cy='68' r='8' fill='%23fff'/%3E%3Ccircle cx='49' cy='69' r='3.5' fill='%23221C44'/%3E%3Ccircle cx='75' cy='69' r='3.5' fill='%23221C44'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#FFF6E6; --card:#fff; --ink:#221C44; --mute:#6E6A8A; --line:#EADFC8;
-  --pri:#5B4BFF; --priD:#3D2FD0; --yel:#FFC83D; --grn:#22C27A; --red:#F2545B;
-}
+:root{--bg:#FFF6E6;--line:#EADFC8;--track:#EFE4CC;--ink:#221C44;--mute:#5F5A80;--pri:#5B4BFF;--priD:#3D2FD0;--grn:#22C27A;--per:#22B8CF}
+.work{--bg:#ECEEFF;--line:#D3D6F5;--track:#DADDF7}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0}
 body{background:#1B1638;font-family:Nunito,system-ui,sans-serif;color:var(--ink);display:flex;align-items:center;justify-content:center;overflow:hidden}
-.app{position:relative;width:min(100vw,420px);height:min(100dvh,840px);background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
-@media(min-width:440px){.app{border-radius:36px;box-shadow:0 30px 80px rgba(0,0,0,.5)}}
+#app{position:relative;width:min(100vw,420px);height:min(100dvh,840px);background:var(--bg);overflow:hidden;display:flex;flex-direction:column;transition:background .35s}
+@media(min-width:440px){#app{border-radius:36px;box-shadow:0 30px 80px rgba(0,0,0,.5)}}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
-button:focus-visible,input:focus-visible{outline:3px solid var(--pri);outline-offset:3px}
-h1{font-family:"Baloo 2",Nunito,sans-serif;font-weight:800;font-size:31px;line-height:1.05;margin:0;letter-spacing:-.3px}
-p{margin:8px 0 0;font-size:17px;font-weight:700;color:var(--mute);line-height:1.3}
-
-/* top bar */
-.top{display:flex;align-items:center;gap:10px;padding:14px 16px 6px;height:52px;flex:none}
-.back{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#fff;box-shadow:0 3px 0 var(--line)}
-.back[hidden]{display:block;visibility:hidden}
-.bar{flex:1;height:14px;background:#EFE4CC;border-radius:99px;overflow:hidden}
-.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--grn),#7BE0A8);border-radius:99px;transition:width .5s cubic-bezier(.3,1.4,.5,1)}
-.demo{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;background:var(--ink);color:#fff;padding:5px 9px;border-radius:99px}
-
-/* screen */
-.scr{flex:1;min-height:0;display:flex;flex-direction:column;padding:6px 20px 20px}
+button:focus-visible{outline:3px solid var(--pri);outline-offset:3px}
+h1{font-family:"Baloo 2",Nunito,sans-serif;font-weight:800;font-size:30px;line-height:1.05;margin:0;letter-spacing:-.3px}
+p{margin:0;font-size:16px;font-weight:700;color:var(--mute);line-height:1.3}
+.top{display:flex;align-items:center;gap:12px;flex:none}
+.back{width:44px;height:44px;border-radius:14px;background:#fff;box-shadow:0 3px 0 var(--line);display:grid;place-items:center;flex:none}
+.back[disabled]{visibility:hidden}
+.bar{flex:1;height:14px;background:var(--track);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--grn);border-radius:99px;transition:width .5s cubic-bezier(.3,1.4,.5,1)}
+.demo{font-size:11px;font-weight:800;letter-spacing:.8px;background:var(--ink);color:#fff;padding:5px 9px;border-radius:99px}
+.scr{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:16px 20px 22px}
 .scr.enter{animation:slide .42s cubic-bezier(.2,1.2,.4,1)}
 @keyframes slide{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:none}}
-.art{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center}
-.txt{text-align:center;padding:10px 4px 16px;flex:none}
-.cta{display:flex;flex-direction:column;gap:12px;flex:none}
-.btn{height:62px;border-radius:20px;background:var(--pri);color:#fff;font-weight:800;font-size:20px;box-shadow:0 6px 0 var(--priD);transition:transform .08s,box-shadow .08s,background .2s;width:100%}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.txt{text-align:center;display:flex;flex-direction:column;gap:6px;flex:none}
+.chip{display:flex;align-items:center;gap:8px;align-self:center;border-radius:99px;padding:8px 14px;font-weight:800;font-size:13px;letter-spacing:1px;flex:none}
+.chip.per{background:var(--per);color:#06303A}.chip.wrk{background:var(--pri);color:#fff}
+.btn{height:60px;border-radius:20px;background:var(--pri);color:#fff;font-weight:800;font-size:20px;box-shadow:0 6px 0 var(--priD);width:100%;flex:none;transition:transform .08s,box-shadow .08s}
 .btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--priD)}
-.btn[disabled]{background:#D9D2EE;box-shadow:0 6px 0 #C2BADD;color:#fff;cursor:default}
 .btn.alt{background:#fff;color:var(--ink);box-shadow:0 6px 0 var(--line)}
-.btn.grn{background:var(--grn);box-shadow:0 6px 0 #15975C}
-.btn.pulse{animation:pulse 1.4s infinite}
-@keyframes pulse{50%{transform:scale(1.03)}}
-
-/* avatars */
-.av{display:inline-block;width:64px;height:64px;flex:none}
-.av svg{width:100%;height:100%;display:block;overflow:visible}
-.bob{animation:bob 2.2s ease-in-out infinite}
-@keyframes bob{50%{transform:translateY(-10px) rotate(3deg)}}
-@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
-@keyframes bounce{0%{transform:scale(1)}30%{transform:scale(.88)}60%{transform:scale(1.12) rotate(-4deg)}100%{transform:scale(1)}}
-@keyframes wob{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
-
-/* welcome */
-.orbit{position:relative;width:280px;height:280px}
-.orbit .logo{position:absolute;inset:80px;border-radius:40px;background:var(--pri);box-shadow:0 8px 0 var(--priD);display:grid;place-items:center;animation:pulse 2.4s infinite}
-.orbit .o{position:absolute;left:108px;top:108px}
-.word{font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-weight:800;font-size:20px;color:var(--pri);letter-spacing:.5px;margin-bottom:4px}
-
-/* signup */
-.tag{width:250px;background:var(--red);border-radius:22px;padding:10px 10px 12px;box-shadow:0 8px 0 #C43B42;transform:rotate(-3deg);text-align:center;color:#fff;animation:wob 4s ease-in-out infinite}
-.tag small{font-weight:800;letter-spacing:2px;font-size:13px;display:block}
-.tag div{background:#fff;color:var(--ink);border-radius:14px;margin-top:8px;height:74px;display:grid;place-items:center;font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-weight:800;font-size:30px;overflow:hidden;white-space:nowrap;padding:0 8px}
-.field{height:58px;border-radius:18px;border:3px solid var(--line);background:#fff;font:800 19px Nunito,sans-serif;color:var(--ink);padding:0 18px;width:100%}
-.field:focus{border-color:var(--pri);outline:0}
-
-/* pick */
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
-.tile{background:#fff;border-radius:24px;padding:12px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:800;font-size:18px;box-shadow:0 6px 0 var(--line);border:4px solid transparent;position:relative;transition:border-color .15s}
-.tile:last-child:nth-child(odd){grid-column:1/3;justify-self:center;width:calc(50% - 6px)}
-.tile.on{border-color:var(--c);animation:bounce .45s}
-.tile .ck{position:absolute;top:-8px;right:-8px;width:30px;height:30px;border-radius:50%;background:var(--grn);display:grid;place-items:center;transform:scale(0)}
-.tile.on .ck{animation:pop .35s forwards}
-
-/* playbook */
-.pb{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;height:100%;justify-content:center}
-.hero{position:relative;display:flex;align-items:center;gap:10px}
-.hero .av{width:104px;height:104px;z-index:3}
-.book{width:120px;height:140px;border-radius:16px;background:#fff;box-shadow:0 7px 0 var(--line);padding:14px 12px;display:flex;flex-direction:column;gap:9px;transform:rotate(5deg);border-top:14px solid var(--c)}
-.book i{height:9px;border-radius:9px;background:#EDE6F7}
-.book i:nth-child(2){width:70%}.book i:nth-child(4){width:55%}
-.book b{margin-top:auto;font-size:10px;font-weight:800;background:var(--yel);border-radius:8px;padding:4px 6px;text-align:center}
-.book.done{animation:bounce .5s}
-.bench{display:flex;gap:8px;padding:10px 14px 8px;background:#fff;border-radius:22px;box-shadow:0 6px 0 var(--line);position:relative}
-.bench:before{content:"TEAM BENCH";position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;letter-spacing:1.5px;background:var(--ink);color:#fff;padding:2px 8px;border-radius:99px;white-space:nowrap}
-.slot{width:46px;height:46px;border-radius:50%;border:3px dashed #D8CDB4;display:grid;place-items:center}
-.slot .av{width:42px;height:42px;display:none}
-.slot.in{border-color:transparent}.slot.in .av{display:block;animation:pop .4s}
-
-/* rows (report + reveal) */
-.rows{display:flex;flex-direction:column;gap:9px;width:100%;max-height:100%}
-.row{display:flex;align-items:center;gap:12px;background:#fff;border-radius:20px;padding:8px 12px;box-shadow:0 4px 0 var(--line);min-height:62px}
-.row .av{width:46px;height:46px}
-.row .who{font-weight:800;font-size:16px;line-height:1.1}
-.row .say{font-size:14px;font-weight:700;color:var(--mute);line-height:1.2;margin-top:2px}
-.row.wait{opacity:.75}.row.wait .av{animation:wob .8s ease-in-out infinite}
-.row.got{animation:bounce .5s}
-.row .ok{margin-left:auto;width:28px;height:28px;border-radius:50%;background:var(--grn);display:grid;place-items:center;flex:none;animation:pop .4s}
-.dots{display:inline-flex;gap:5px;margin-top:6px}
-.dots i{width:9px;height:9px;border-radius:50%;background:#C9C3DD;animation:dot 1s infinite}
-.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
-@keyframes dot{30%{transform:translateY(-7px);background:var(--pri)}}
-.row.card{opacity:0;animation:deal .5s cubic-bezier(.2,1.4,.4,1) forwards}
-@keyframes deal{from{opacity:0;transform:translateY(30px) scale(.8) rotate(-4deg)}to{opacity:1;transform:none}}
-.badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
-.bdg{display:inline-flex;align-items:center;gap:4px;background:var(--c);color:#fff;font-weight:800;font-size:12.5px;padding:4px 8px 4px 6px;border-radius:99px}
-.bdg.new{background:#E7E1F5;color:var(--mute);padding:4px 10px}
-
-/* conflict */
-.tug{display:flex;align-items:center;justify-content:center;gap:6px;width:100%}
-.tug .av{width:92px;height:92px;transition:transform .5s cubic-bezier(.2,1.5,.4,1),opacity .4s}
-.tug .l{animation:pullL 1s ease-in-out infinite}.tug .r{animation:pullR 1s ease-in-out infinite}
-@keyframes pullL{50%{transform:translateX(-8px) rotate(-6deg)}}
-@keyframes pullR{50%{transform:translateX(8px) rotate(6deg)}}
-.prize{width:84px;height:84px;border-radius:26px;background:var(--c);display:grid;place-items:center;box-shadow:0 6px 0 rgba(0,0,0,.18);animation:wob .5s ease-in-out infinite;transition:transform .5s cubic-bezier(.2,1.5,.4,1);z-index:2}
-.tug.win-l .prize{transform:translateX(-70px) scale(.7)}.tug.win-r .prize{transform:translateX(70px) scale(.7)}
-.tug.win-l .r,.tug.win-r .l{opacity:.3;transform:scale(.8)}
-.tug.win-l .l,.tug.win-r .r,.tug.win-s .av{animation:bounce .5s}
-
-.taps{position:absolute;top:4px;left:50%;transform:translateX(-50%);background:#fff;border-radius:99px;padding:6px 14px;font-weight:800;font-size:14px;box-shadow:0 3px 0 var(--line);white-space:nowrap}
-.taps b{color:var(--pri);font-size:17px}
-.three{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.three .btn{font-size:19px;background:var(--c);box-shadow:0 6px 0 rgba(0,0,0,.25)}
-.three .btn.alt{grid-column:1/3;background:#fff;box-shadow:0 6px 0 var(--line)}
-
-/* preset */
-.newbie{display:flex;flex-direction:column;align-items:center;gap:14px}
-.newbie .av{width:120px;height:120px}
-.role{display:flex;align-items:center;gap:10px;background:var(--c);color:#fff;font-weight:800;font-size:21px;padding:12px 20px 12px 14px;border-radius:99px;box-shadow:0 6px 0 rgba(0,0,0,.18)}
-.role.swap{animation:pop .35s}
-
-/* chief */
-.chief{display:flex;flex-direction:column;align-items:center;gap:22px;width:100%}
-.seat{width:150px;height:150px;border-radius:50%;border:5px dashed #D8CDB4;display:grid;place-items:center;position:relative;font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-weight:800;font-size:54px;color:#D8CDB4}
-.seat.full{border-style:solid;border-color:var(--yel);background:#FFF1C7}
-.seat .av{width:112px;height:112px;animation:pop .4s}
-.crown{position:absolute;top:-58px;left:50%;margin-left:-38px;width:76px;opacity:0}
-.seat.full .crown{animation:crown .7s cubic-bezier(.3,1.6,.5,1) forwards}
-@keyframes crown{0%{opacity:0;transform:translateY(-140px) rotate(-30deg) scale(1.6)}60%{opacity:1;transform:translateY(8px) rotate(6deg)}100%{opacity:1;transform:rotate(-6deg)}}
-.line{display:flex;gap:8px;justify-content:center}
-.line button{border-radius:50%;padding:3px;border:4px solid transparent}
-.line button.on{border-color:var(--yel)}
-.line .av{width:52px;height:52px}
-
-/* done */
-.party{display:flex;justify-content:center;align-items:flex-end;gap:2px}
-.party .av{width:66px;height:66px;animation:jump .7s ease-in-out infinite}
-.party span:nth-child(2n) .av{animation-delay:.2s}.party span:nth-child(3n) .av{animation-delay:.35s}
-@keyframes jump{50%{transform:translateY(-26px) rotate(6deg)}}
-.conf{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}
-.conf i{position:absolute;top:-20px;width:10px;height:16px;border-radius:3px;animation:fall linear forwards}
-@keyframes fall{to{transform:translateY(900px) rotate(720deg)}}
-
-/* launch pad */
-.pad{flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 16px 16px;gap:10px}
-.padh{display:flex;align-items:center;gap:8px}
-.padh h1{font-size:26px;flex:1}
-.cos{display:flex;align-items:center;gap:4px;background:#FFF1C7;border-radius:99px;padding:3px 10px 3px 4px;font-weight:800;font-size:12px}
-.cos .av{width:26px;height:26px}
-.sw{position:relative;display:grid;grid-template-columns:repeat(3,1fr);background:var(--ink);border-radius:22px;padding:6px;height:64px;flex:none}
-.sw .th{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/3);border-radius:17px;background:var(--grn);transition:transform .35s cubic-bezier(.3,1.5,.5,1),background .3s}
-.sw[data-m=pause] .th{transform:translateX(100%);background:var(--yel)}
-.sw[data-m=off] .th{transform:translateX(200%);background:var(--red)}
-.sw button{position:relative;z-index:1;color:#9C96BD;font-weight:800;font-size:18px;letter-spacing:1px}
-.sw button[aria-checked=true]{color:#fff}
-.sw[data-m=pause] button[aria-checked=true]{color:var(--ink)}
-.stat{text-align:center;font-size:14.5px;font-weight:800;color:var(--mute);margin:0}
+.fill{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;justify-content:center}
+.opt{display:flex;align-items:center;gap:14px;background:#fff;border-radius:22px;padding:14px 16px;box-shadow:0 4px 0 var(--line);min-height:92px;text-align:left;width:100%}
+.opt[aria-checked=true]{box-shadow:0 4px 0 var(--line),0 0 0 4px var(--pri)}
+.opt .ic{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;flex:none}
+.opt b{font-family:"Baloo 2",Nunito,sans-serif;font-size:22px;line-height:1.1;display:block}
+.opt small{font-weight:700;font-size:14px;line-height:1.25;color:var(--mute);display:block}
+.opt .mk{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);flex:none;display:grid;place-items:center}
+.opt[aria-checked=true] .mk{background:var(--pri);border-color:var(--pri);animation:pop .3s}
+.row{display:flex;align-items:center;gap:12px;background:#fff;border-radius:20px;padding:10px 14px;box-shadow:0 4px 0 var(--line);min-height:66px;text-align:left;width:100%;transition:opacity .2s}
+.row[aria-pressed=false]{opacity:.7}
+.row img{width:46px;height:46px;object-fit:contain;flex:none}
+.row b{font-size:18px;display:block}.row small{font-weight:700;font-size:13px;color:var(--mute);display:block}
+.pill{border-radius:99px;padding:7px 12px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:4px;flex:none}
+.pill.on{background:var(--grn);color:#06301C}.pill.off{background:#fff;color:var(--mute);box-shadow:inset 0 0 0 2px var(--line)}
 .grid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:10px}
-.m{border-radius:22px;background:var(--c);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-weight:800;font-size:20px;box-shadow:0 6px 0 rgba(0,0,0,.2);position:relative;transition:transform .08s,filter .3s,opacity .3s}
-.m:active{transform:translateY(4px)}
-.m .own{position:absolute;top:6px;right:6px;display:flex}
-.m .own .av{width:28px;height:28px;margin-left:-8px;background:#fff;border-radius:50%;padding:2px}
-.pad[data-m=pause] .m{filter:saturate(.45)}
-.pad[data-m=off] .m{filter:grayscale(1);opacity:.55}
+.m{position:relative;border-radius:22px;background:var(--c);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:"Baloo 2",Nunito,sans-serif;font-weight:800;font-size:20px;box-shadow:0 6px 0 rgba(0,0,0,.2);min-height:0;transition:transform .08s}
+.m:active{transform:translateY(3px)}
+.own{position:absolute;top:7px;right:7px;display:flex;padding-left:8px}
+.own img{width:30px;height:30px;object-fit:contain;background:#fff;border-radius:50%;padding:2px;margin-left:-8px}
+.own img.new{animation:pop .3s}
+.own span{height:30px;padding:0 10px;white-space:nowrap;font-weight:800;border-radius:99px;background:rgba(255,255,255,.92);color:var(--ink);font-family:Nunito,sans-serif;font-size:12px;display:grid;place-items:center}
+.padh{display:flex;align-items:center;gap:8px;flex:none}.padh h1{font-size:26px;flex:1}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#fff;border-radius:20px;padding:5px;box-shadow:0 3px 0 var(--line);flex:none}
+.seg button{height:46px;border-radius:15px;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--mute);transition:background .2s,color .2s}
+.seg button small{font-size:12px;opacity:.85}
+.seg button[aria-pressed=true][data-s=personal]{background:var(--per);color:#06303A}
+.seg button[aria-pressed=true][data-s=work]{background:var(--pri);color:#fff}
+.sw{display:grid;grid-template-columns:repeat(3,1fr);background:var(--ink);border-radius:20px;padding:6px;height:56px;flex:none}
+.sw button{border-radius:15px;color:#C9C4E6;font-weight:800;font-size:17px;letter-spacing:1px;transition:background .2s}
+.sw button[aria-pressed=true]{color:#06301C;background:var(--grn)}
+.sw button[aria-pressed=true][data-m=pause]{background:#FFC83D;color:#3A2A00}
+.sw button[aria-pressed=true][data-m=off]{background:#F2545B;color:#fff}
+.grid.dim .m{filter:saturate(.35);opacity:.75}
+.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:none}
+.nav button{height:52px;border-radius:18px;background:#fff;box-shadow:0 3px 0 var(--line);font-weight:800;font-size:16px}
+.nav button[aria-current]{background:var(--ink);color:#fff;box-shadow:none}
 .sheet{position:absolute;inset:0;background:rgba(27,22,56,.55);z-index:8;display:flex;align-items:flex-end;animation:fade .2s}
-@keyframes fade{from{opacity:0}}
-.sheet>div{background:var(--bg);width:100%;border-radius:32px 32px 0 0;padding:26px 20px 22px;text-align:center;animation:up .4s cubic-bezier(.2,1.3,.4,1)}
-@keyframes up{from{transform:translateY(100%)}}
-.sheet .big{display:flex;justify-content:center;align-items:center;gap:6px;margin-bottom:12px}
-.sheet .big .av{width:84px;height:84px}
-.sheet .ico{width:64px;height:64px;border-radius:20px;background:var(--c);display:grid;place-items:center}
-.sheet .cta{margin-top:18px}
-.toast{position:absolute;left:50%;top:16px;transform:translateX(-50%);background:var(--ink);color:#fff;font-weight:800;font-size:14px;padding:10px 16px;border-radius:99px;z-index:9;white-space:nowrap;animation:pop .3s}
+.sheet>div{background:var(--bg);width:100%;border-radius:32px 32px 0 0;padding:24px 20px 22px;text-align:center;display:flex;flex-direction:column;gap:12px;animation:up .4s cubic-bezier(.2,1.3,.4,1)}
+.sheet .big{display:flex;justify-content:center;align-items:center;gap:10px}
+.sheet .big span{width:64px;height:64px;border-radius:20px;background:var(--c);display:grid;place-items:center}
+.sheet .big img{width:60px;height:60px;object-fit:contain}
+.pick{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.pick button{width:64px;height:64px;border-radius:50%;background:#fff;box-shadow:0 4px 0 var(--line);display:grid;place-items:center;font-weight:800;font-size:12px}
+.pick button[aria-pressed=true]{box-shadow:0 4px 0 var(--line),0 0 0 4px var(--pri)}
+.pick img{width:48px;height:48px;object-fit:contain}
 
-/* wins */
-.wins{display:flex;align-items:center;gap:10px;background:#fff;border-radius:18px;height:50px;padding:0 14px 0 8px;box-shadow:0 4px 0 var(--line);font-weight:800;font-size:14px;flex:none;width:100%;text-align:left}
-.wins .tro{width:34px;height:34px;border-radius:12px;background:var(--yel);display:grid;place-items:center;flex:none}
-.wins b{font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-size:24px;color:var(--pri);line-height:1}
-.wins .last{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mute)}
-.wins.bump .tro,.wins.bump b{animation:bounce .5s}
-.m.win{animation:bounce .6s;box-shadow:0 0 0 4px var(--bg),0 0 0 9px var(--yel);z-index:2}
-.winc{position:absolute;left:16px;right:16px;bottom:80px;z-index:7;background:#fff;border-radius:24px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 7px 0 var(--line),0 18px 40px rgba(34,28,68,.28);animation:winin .5s cubic-bezier(.2,1.5,.4,1)}
-.winc.out{animation:winout .4s forwards}
-@keyframes winin{from{transform:translateY(140px) scale(.6);opacity:0}}
-@keyframes winout{to{transform:translateY(80px) scale(.2);opacity:0}}
-.winc .av{width:56px;height:56px;animation:jump .6s 3}
-.winc .t{flex:1;min-width:0}
-.winc .t small{display:block;font-size:12px;letter-spacing:1px;color:#128A53;font-weight:800;text-transform:uppercase}
-.winc .t div{font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-weight:800;font-size:20px;line-height:1.1}
-.winc .stamp{width:44px;height:44px;border-radius:50%;background:var(--grn);display:grid;place-items:center;flex:none;animation:stamp .5s .25s both}
-@keyframes stamp{0%{transform:scale(3) rotate(-40deg);opacity:0}60%{transform:scale(.85);opacity:1}100%{transform:scale(1);opacity:1}}
-.winc i.p{position:absolute;right:36px;top:50%;width:9px;height:9px;border-radius:3px;pointer-events:none;animation:burst .9s .35s ease-out both}
-@keyframes burst{0%{transform:translate(0,0) scale(0);opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(300deg) scale(1);opacity:0}}
-.sheet .rows{margin:14px 0 0;text-align:left}
+.acct{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}.acct span{background:#fff;border-radius:99px;padding:6px 12px;font-size:13px;font-weight:800;box-shadow:inset 0 0 0 2px var(--line)}
+.lnk{font-weight:800;font-size:15px;color:var(--priD);text-decoration:underline;min-height:44px}
+.m small{font-family:Nunito,sans-serif;font-size:11px;font-weight:800;letter-spacing:.6px;opacity:.95;line-height:1}
+.own img+img{margin-left:-12px}
+.say{display:flex;align-items:flex-end;gap:8px;flex:none}
+.say svg{flex:none}
+.say div{background:#fff;border-radius:18px 18px 18px 4px;padding:10px 14px;box-shadow:0 3px 0 var(--line);font-weight:800;font-size:15px;line-height:1.25;text-align:left}
+.hero{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;position:relative}
+.bob{animation:bob 2.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-8px) rotate(-2deg)}}
+@keyframes toot{0%,100%{transform:none}20%{transform:scale(1.12) rotate(-6deg)}40%{transform:scale(1.08) rotate(5deg)}60%{transform:scale(1.1) rotate(-3deg)}}
+.toot{animation:toot .7s}
+.bench{display:flex;justify-content:center;gap:14px}
+.bench span{position:relative;width:64px;height:64px;border-radius:50%;background:#fff;box-shadow:0 4px 0 var(--line);display:grid;place-items:center}
+.bench img{width:50px;height:50px;object-fit:contain}
+.bench i{position:absolute;right:-4px;bottom:-4px;width:24px;height:24px;border-radius:50%;background:var(--grn);display:none;place-items:center}
+.bench .got i{display:grid;animation:pop .3s}
+.book{position:absolute;left:50%;top:38%;width:34px;height:44px;margin:-22px 0 0 -17px;border-radius:6px;background:#fff;box-shadow:0 3px 0 var(--line);border-top:8px solid var(--pri);opacity:0;pointer-events:none}
+.book.fly{animation:fly .7s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes fly{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(340deg) scale(.5)}}
+.brief{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;border-radius:20px;padding:6px 12px;min-height:54px;text-align:left;flex:none;width:100%}
+.brief small{display:block;font-size:11px;font-weight:800;letter-spacing:1px;color:#FFC83D}.brief b{font-size:16px}
+.brief .pl{margin-left:auto;width:34px;height:34px;border-radius:50%;background:#FFC83D;display:grid;place-items:center;flex:none}
+.list{display:flex;flex-direction:column;gap:8px;text-align:left}.list div{background:#fff;border-radius:16px;padding:10px 14px;font-weight:800;font-size:15px;box-shadow:0 3px 0 var(--line)}
+.field{display:flex;flex-direction:column;gap:4px;text-align:left;font-weight:800;font-size:13px;color:var(--mute)}
+.field input{height:54px;border-radius:16px;border:3px solid var(--line);background:#fff;padding:0 14px;font:inherit;font-size:17px;font-weight:700;color:var(--ink)}
+.field input:focus{outline:none;border-color:var(--pri)}
+.ais{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:12px}
+.ai{position:relative;background:#fff;border-radius:24px;box-shadow:0 4px 0 var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-weight:800;font-size:18px;min-height:0}
+.ai img{width:72px;height:72px;object-fit:contain}
+.ai[aria-pressed=true]{box-shadow:0 4px 0 var(--line),0 0 0 4px var(--pri)}
+.ai i{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;background:var(--pri);display:none;place-items:center}
+.ai[aria-pressed=true] i{display:grid;animation:pop .3s}
+.btn[disabled]{opacity:.45;box-shadow:0 6px 0 var(--line);background:#B9B4D6}
+.steps{display:flex;align-items:center;justify-content:center;gap:6px;flex:none}
+.steps span{display:flex;align-items:center;gap:6px;background:#fff;border-radius:99px;padding:6px 12px 6px 6px;font-weight:800;font-size:13px;color:var(--mute);box-shadow:0 3px 0 var(--line)}
+.steps b{width:24px;height:24px;border-radius:50%;background:var(--track);display:grid;place-items:center;font-size:12px;color:var(--ink)}
+.steps .on{background:var(--pri);color:#fff}.steps .on b{background:#fff}
+.steps .ok b{background:var(--grn);color:#06301C}
+.pass{display:flex;align-items:center;justify-content:center;gap:26px;position:relative}
+.pass .to{width:104px;height:104px;border-radius:50%;background:#fff;box-shadow:0 5px 0 var(--line);display:grid;place-items:center}
+.pass .to img{width:80px;height:80px;object-fit:contain}
+.pass .book{left:34%;top:50%}
+.rep{display:flex;flex-direction:column;gap:8px;width:100%}
+.rep div{background:#fff;border-radius:18px;padding:10px 12px;box-shadow:0 3px 0 var(--line);text-align:left}
+.rep small{display:block;font-size:11px;font-weight:800;letter-spacing:1px;color:var(--mute);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips span{border-radius:99px;padding:5px 10px;font-size:13px;font-weight:800;color:#fff;background:var(--c)}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.strip span{position:relative;height:58px;border-radius:16px;background:var(--c);display:grid;place-items:center;box-shadow:0 4px 0 rgba(0,0,0,.18)}
+.strip span.q{box-shadow:0 4px 0 rgba(0,0,0,.18),0 0 0 4px #FFC83D}
+.strip img{position:absolute;right:-5px;bottom:-5px;width:26px;height:26px;object-fit:contain;background:#fff;border-radius:50%;padding:2px}
+.strip em{position:absolute;right:-5px;bottom:-5px;min-width:24px;height:24px;border-radius:99px;background:#FFC83D;color:#221C44;font-style:normal;font-weight:800;font-size:13px;display:grid;place-items:center;padding:0 6px}
+.strip em.n{background:#fff;color:var(--mute)}
+.brd{background:rgba(255,255,255,.6);border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.brd h2{margin:0;font-size:14px;font-weight:800;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:none}
+.choice button{background:#fff;border-radius:24px;box-shadow:0 5px 0 var(--line);padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;font-weight:800;font-size:18px}
+.choice img{width:84px;height:84px;object-fit:contain}
+.choice button.win{box-shadow:0 5px 0 var(--line),0 0 0 5px var(--grn);animation:pop .3s}
+.bigsrc{width:96px;height:96px;border-radius:30px;background:var(--c);display:grid;place-items:center;box-shadow:0 6px 0 rgba(0,0,0,.2)}
+.stg{text-align:center;font-size:12px;font-weight:800;letter-spacing:1.2px;color:var(--mute);flex:none;margin-top:-6px}
+@keyframes rise{from{opacity:0;transform:translateY(16px) scale(.95)}to{opacity:1;transform:none}}
+.stag>*{animation:rise .5s cubic-bezier(.2,1.3,.4,1) both}
+.stag>*:nth-child(2){animation-delay:.08s}.stag>*:nth-child(3){animation-delay:.16s}.stag>*:nth-child(4){animation-delay:.24s}.stag>*:nth-child(5){animation-delay:.32s}.stag>*:nth-child(6){animation-delay:.4s}.stag>*:nth-child(7){animation-delay:.48s}.stag>*:nth-child(8){animation-delay:.56s}
+.orb{position:absolute;width:58px;height:58px;border-radius:50%;background:#fff;box-shadow:0 4px 0 var(--line);display:grid;place-items:center;animation:drift 4s ease-in-out infinite}
+.orb img{width:44px;height:44px;object-fit:contain}
+@keyframes drift{50%{transform:translate(var(--mx),var(--my)) rotate(8deg)}}
+.to.listen{animation:ring 1.3s ease-out infinite}
+@keyframes ring{0%{box-shadow:0 5px 0 var(--line),0 0 0 0 rgba(91,75,255,.55)}100%{box-shadow:0 5px 0 var(--line),0 0 0 26px rgba(91,75,255,0)}}
+.dots{display:flex;gap:6px;justify-content:center;height:14px}.dots i{width:10px;height:10px;border-radius:50%;background:var(--pri);animation:hop .9s infinite}.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes hop{0%,60%,100%{transform:none}30%{transform:translateY(-9px)}}
+.cf{position:absolute;top:-14px;width:9px;height:14px;border-radius:3px;z-index:9;pointer-events:none;animation:fall var(--t) linear forwards}
+@keyframes fall{to{transform:translate(var(--x),860px) rotate(var(--r))}}
+.strip span{animation:rise .45s cubic-bezier(.2,1.4,.4,1) both;animation-delay:var(--d)}
+.choice{position:relative}
+.choice button:nth-child(1){animation:inL .55s cubic-bezier(.2,1.2,.4,1) both}.choice button:nth-child(2){animation:inR .55s cubic-bezier(.2,1.2,.4,1) both}
+@keyframes inL{from{opacity:0;transform:translateX(-80px) rotate(-8deg)}}@keyframes inR{from{opacity:0;transform:translateX(80px) rotate(8deg)}}
+.choice button.lose{opacity:.35;transform:scale(.9);transition:opacity .3s,transform .3s}
+.vs{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:var(--ink);color:#fff;font-weight:800;font-size:14px;display:grid;place-items:center;z-index:1;animation:pop .4s .35s both}
+.play{background:var(--ink);color:#fff;border-radius:20px;padding:8px 10px 8px 8px;display:flex;align-items:center;gap:10px;flex:none;min-height:64px}
+.play .tx{flex:1;min-width:0;text-align:left}.play small{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:1px;color:#FFC83D}
+.play small i{width:7px;height:7px;border-radius:50%;background:#5F5A80}.play small i.d{background:#22C27A}.play small i.c{background:#FFC83D}
+.play b{display:block;font-size:15px;line-height:1.2}
+.play .do{background:#FFC83D;color:#221C44;border-radius:14px;padding:0 14px;height:44px;font-weight:800;font-size:15px;flex:none;animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{50%{transform:scale(1.07)}}
+.play.flash{animation:pop .45s}
+.m.spot{animation:spot 1.1s ease-in-out infinite;z-index:1}
+@keyframes spot{50%{box-shadow:0 6px 0 rgba(0,0,0,.2),0 0 0 6px #FFC83D;transform:scale(1.04)}}
+.m.won{animation:toot .7s}
 
-/* v3: team health, briefing, needs-you */
-.team{display:flex;align-items:center;gap:8px;width:100%;height:34px;flex:none}
-.team .tm{display:flex;gap:5px}
-.team .w{position:relative;display:block}
-.team .av{width:30px;height:30px}
-.dot{position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);background:var(--grn)}
-.dot.q{background:var(--yel)}
-.pad[data-m=off] .dot{background:#B9B4C9}
-.team .stat{flex:1;text-align:right;font-size:13.5px}
-.row .dot{position:static;border:0;width:14px;height:14px;margin-left:auto;flex:none}
-.brief{display:flex;gap:10px;flex:none;height:62px}
-.bplay{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;border-radius:20px;padding:0 12px 0 8px;box-shadow:0 5px 0 #0F0B26;text-align:left}
-.bplay:active,.need:active{transform:translateY(3px)}
-.bplay .av{width:44px;height:44px}
-.bplay small{display:block;font-size:11px;letter-spacing:1px;font-weight:800;color:var(--yel)}
-.bplay .l{font-weight:800;font-size:15px;line-height:1.15}
-.bplay .pl{margin-left:auto;width:34px;height:34px;border-radius:50%;background:var(--yel);display:grid;place-items:center;flex:none}
-.need{width:92px;flex:none;border-radius:20px;background:#D8343F;color:#fff;box-shadow:0 5px 0 #A8232D;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:12px;line-height:1.1}
-.need b{font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-size:26px;line-height:.95}
-.need.has{animation:pulse 1.4s infinite}
-.need.clear{background:var(--grn);box-shadow:0 5px 0 #15975C;color:var(--ink)}
-.wave{display:flex;gap:5px;align-items:center;justify-content:center;height:42px;margin-left:8px}
-.wave i{width:6px;height:12px;border-radius:6px;background:var(--pri);animation:wave .7s ease-in-out infinite}
-.wave i:nth-child(2){animation-delay:.1s}.wave i:nth-child(3){animation-delay:.25s}.wave i:nth-child(4){animation-delay:.05s}.wave i:nth-child(5){animation-delay:.3s}
-@keyframes wave{50%{height:40px}}
-.bl{font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-weight:800;font-size:23px;line-height:1.15;margin-top:10px;opacity:0;animation:deal .5s cubic-bezier(.2,1.4,.4,1) forwards}
-.left{display:inline-block;background:var(--ink);color:#fff;font-size:12px;font-weight:800;letter-spacing:.5px;padding:4px 10px;border-radius:99px;margin-bottom:12px}
-.bigok{width:84px;height:84px;border-radius:50%;background:var(--grn);display:grid;place-items:center;animation:stamp .5s both}
-@media(max-height:700px){.m{font-size:17px}.m>svg{width:28px;height:28px}}
-
-/* v4: nav, team levels, recap, history, export, edit owner */
-.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;height:52px;flex:none}
-.nb{background:#fff;border-radius:18px;box-shadow:0 4px 0 var(--line);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;gap:6px}
-.nb[aria-current=page]{background:var(--ink);color:#fff;box-shadow:0 4px 0 #0F0B26}
-.nb b{font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-size:20px;line-height:1;color:var(--pri)}
-.nb[aria-current=page] b{color:var(--yel)}
-#wins.bump{animation:bounce .5s}
-.snd{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#fff;box-shadow:0 3px 0 var(--line);flex:none}
-.padh h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.padh h1 button{font:inherit;display:flex;align-items:center;gap:8px;max-width:100%}
-.sdot{position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:var(--grn)}
-.sdot.q{background:var(--yel)}
-.pad[data-m=off] .sdot{background:#B9B4C9}
-.pad{gap:12px}
-.lv{width:64px;height:12px;border-radius:99px;background:#EFE4CC;overflow:hidden;flex:none}
-.lv i{display:block;height:100%;background:var(--grn);border-radius:99px}
-.medals{display:flex;justify-content:center;gap:14px;margin-top:16px}
-.medal{display:flex;flex-direction:column;align-items:center;gap:8px;font-weight:800;font-size:13px;color:var(--mute)}
-.medal span{width:64px;height:64px;border-radius:50%;border:4px dashed #D8CDB4;display:grid;place-items:center}
-.medal.on{color:var(--ink)}
-.medal.on span{border:0;background:var(--yel);box-shadow:0 5px 0 #E0A400;animation:pop .4s}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
-.stats div{background:#fff;border-radius:20px;padding:12px 6px;font-weight:800;font-size:12.5px;line-height:1.15;box-shadow:0 5px 0 var(--line);animation:pop .4s both}
-.stats div:nth-child(2){animation-delay:.12s}.stats div:nth-child(3){animation-delay:.24s}
-.stats b{display:block;font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-size:36px;line-height:1;color:var(--c)}
-.filt{display:flex;align-items:center;justify-content:space-between;flex:none}
-.filt .line{gap:2px}
-.filt .line button{border-width:3px;padding:2px}
-.filt .av{width:34px;height:34px}
-#hc{font-weight:800;font-size:13px;color:var(--mute)}
-.row.sm{min-height:54px;padding:6px 12px}
-.row.sm .av{width:38px;height:38px}
-
-/* v6: one celebration per mission */
-.fx{position:absolute;pointer-events:none;font-style:normal}
-.coin{right:42px;top:40%;width:20px;height:20px;border-radius:50%;background:var(--yel);border:2px solid #E0A400;font:800 11px Nunito,sans-serif;color:#8A6500;display:grid;place-items:center;animation:coin 1.1s cubic-bezier(.3,0,.7,1) both}
-@keyframes coin{0%{transform:translate(0,0) scale(0)}35%{transform:translate(calc(var(--dx)*.5),-80px) scale(1)}100%{transform:translate(var(--dx),70px) scale(1);opacity:0}}
-.plane{left:56px;top:6px;width:38px;height:30px;border-radius:9px;background:var(--c);display:grid;place-items:center;animation:plane 1.3s .35s cubic-bezier(.5,0,.8,.6) both}
-@keyframes plane{0%{transform:scale(0)}20%{transform:translate(10px,-10px) scale(1.2) rotate(-8deg)}100%{transform:translate(300px,-260px) scale(.4) rotate(-35deg);opacity:0}}
-.ring{right:14px;top:50%;width:44px;height:44px;margin-top:-22px;border-radius:50%;border:4px solid var(--grn);animation:ring .8s ease-out both}
-@keyframes ring{0%{transform:scale(1);opacity:.9}100%{transform:scale(3.2);opacity:0}}
-.winc.fx-calendar{animation:winin .5s cubic-bezier(.2,1.5,.4,1),shake .4s .6s}
-@keyframes shake{25%{transform:translateX(-7px) rotate(-1deg)}50%{transform:translateX(7px) rotate(1deg)}75%{transform:translateX(-4px)}}
-.winc i.chr{background:none;width:auto;height:auto;font:800 19px ui-monospace,Menlo,monospace;color:var(--pri)}
-.spk{animation:twinkle .9s both}
-.spk svg{fill:var(--f,#FFC83D);stroke:var(--f,#FFC83D)}
-@keyframes twinkle{0%,100%{transform:scale(0) rotate(0)}50%{transform:scale(1.3) rotate(90deg)}}
-.und{left:82px;bottom:4px;width:170px;height:14px}
-.und path{fill:none;stroke:var(--red);stroke-width:3.5;stroke-linecap:round;stroke-dasharray:240;stroke-dashoffset:240;animation:draw .9s .4s ease-out forwards}
-@keyframes draw{to{stroke-dashoffset:0}}
-.hrt{bottom:20px;animation:float 1.4s ease-out both}
-@keyframes float{0%{transform:translate(0,0) scale(0);opacity:1}100%{transform:translate(var(--dx),-170px) scale(1.2);opacity:0}}
-.beamw{inset:0;border-radius:24px;overflow:hidden}
-.beamw i{position:absolute;top:-20%;left:0;width:60px;height:140%;background:linear-gradient(90deg,transparent,rgba(58,134,255,.4),transparent);transform:translateX(-80px) skewX(-20deg);animation:beam 1s .3s ease-in-out both}
-@keyframes beam{to{transform:translateX(380px) skewX(-20deg)}}
-.m.win>svg{animation:flip .7s}
-@keyframes flip{50%{transform:rotateY(180deg) scale(1.3)}}
-
-/* v8 */
-.lnk{font-weight:800;font-size:15px;color:var(--priD);text-decoration:underline;min-height:40px}
-.num{width:36px;height:36px;border-radius:50%;background:var(--pri);color:#fff;display:grid;place-items:center;font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-weight:800;font-size:20px;flex:none}
-.chip{background:#fff;border-radius:99px;padding:7px 11px;font-weight:800;font-size:12px;box-shadow:0 3px 0 var(--line);white-space:nowrap;flex:none}
-#hl{overflow-y:auto;padding-bottom:6px}
-#hl .row{flex:none}
-
-/* desktop */
-@media(min-width:900px){
-  .app{width:min(calc(100vw - 40px),1560px);height:min(calc(100dvh - 28px),940px);border-radius:28px}
-  .top{max-width:500px;width:100%;margin:0 auto}
-  .scr{align-items:center}
-  .scr>*{width:100%;max-width:460px}
-  .pad.desk{display:grid;grid-template-columns:clamp(300px,24vw,380px) minmax(0,1fr) clamp(330px,27vw,420px);gap:24px;padding:24px 28px}
-  .filt{flex-wrap:wrap;gap:6px}
-  .filt .line{flex-wrap:wrap;overflow:visible}
+/* ---------- production additions ---------- */
+.demo{display:none}
+.sheet>div{max-height:94%;overflow:auto}
+.note{text-align:center;font-size:14px;flex:none}
+.err{color:#B3261E;font-size:14px;min-height:18px;text-align:center}
+.toast{position:absolute;left:16px;right:16px;bottom:84px;z-index:9;background:var(--ink);color:#fff;border-radius:18px;padding:12px 16px;font-weight:800;font-size:15px;text-align:center;animation:rise .35s both;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.lnks{display:flex;flex-direction:column;align-items:center;flex:none;margin-top:-8px}
+.lnk{min-height:40px}.lnk.danger{color:#B3261E}
+.avl{display:grid;place-items:center;border-radius:50%;background:var(--ink);color:#fff;font-weight:800;flex:none;width:44px;height:44px;font-size:20px}
+.orb img{width:44px;height:44px}.to img{width:80px;height:80px;object-fit:contain}
+.ais{grid-template-columns:repeat(3,1fr);gap:9px}
+.ai{border-radius:20px;font-size:14px;gap:2px;padding:4px}.ai img{width:52px;height:52px}.ai .avl{width:52px;height:52px}
+.ai i{top:6px;right:6px;width:22px;height:22px}
+.ais.small{max-height:52vh}.ais.small .ai{min-height:92px}
+.none{font-size:14px;color:var(--mute)}
+.choice.n3{grid-template-columns:repeat(3,1fr)}.choice.n3 img{width:60px;height:60px}.choice.n3 button{font-size:15px;padding:12px 4px}
+.choice .avl{width:72px;height:72px;font-size:30px}
+.strip .avl{position:absolute;right:-5px;bottom:-5px;width:26px;height:26px;font-size:12px;border:2px solid #fff}
+.own .avl{width:30px;height:30px;font-size:13px;margin-left:-8px;border:2px solid #fff}
+.own span.y{background:#FFC83D}
+.padh h1{font-size:22px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.padh h1 small{display:block;font-family:Nunito,sans-serif;font-size:12px;letter-spacing:1px;color:var(--mute)}
+.chipb{background:#fff;border-radius:99px;padding:8px 12px;font-weight:800;font-size:12px;box-shadow:0 3px 0 var(--line);white-space:nowrap;flex:none}
+.ico{width:64px;height:64px;border-radius:20px;background:var(--c);display:grid;place-items:center;flex:none}
+.sheet .big .avl{width:60px;height:60px;font-size:26px}
+.sheet .big .to{width:72px;height:72px;border-radius:50%;background:#fff;display:grid;place-items:center}.sheet .big .to img{width:56px;height:56px}
+.sheet .field{text-align:left}
+textarea{width:100%;border-radius:16px;border:3px solid var(--line);background:#fff;padding:12px 14px;font:inherit;font-size:15px;font-weight:700;color:var(--ink);resize:none}
+textarea:focus{outline:none;border-color:var(--pri)}
+.list .num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--pri);color:#fff;font-size:13px;margin-right:8px}
+.rowb{display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;padding:10px 12px;box-shadow:0 3px 0 var(--line);text-align:left;font-weight:800;font-size:14px}
+.rowb span{flex:1;min-width:0}.rowb small{display:block;font-size:12px;color:var(--mute)}
+.rows{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;overflow:auto;padding-bottom:4px}
+.rows.scrollr{flex:none;max-height:210px}
+.row{display:flex;align-items:center;gap:10px;background:#fff;border-radius:18px;padding:8px 12px;box-shadow:0 3px 0 var(--line);min-height:58px;text-align:left;width:100%;flex:none;opacity:1}
+.row.off{opacity:.6}
+.row .a{position:relative;flex:none;display:grid}.row .a img{width:40px;height:40px;object-fit:contain}.row .a .avl{width:40px;height:40px;font-size:18px}
+.row .t{flex:1;min-width:0}.row .t b{display:block;font-size:15px;line-height:1.2}.row .t small{display:block;font-size:12px;font-weight:700;color:var(--mute);margin-top:2px}
+.dot{position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:50%;border:2px solid #fff;background:#B9B4D6}.dot.g{background:var(--grn)}.dot.q{background:#FFC83D}
+.cnt{font-family:"Baloo 2",Nunito,sans-serif;font-weight:800;font-size:20px;color:var(--mute)}
+.okc{width:26px;height:26px;border-radius:50%;background:var(--grn);display:grid;place-items:center;flex:none}
+.xn{background:var(--ink);color:#fff;border-radius:99px;padding:1px 8px;font-size:12px;margin-left:6px;white-space:nowrap}
+.mvs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mvs div{background:#fff;border-radius:16px;padding:8px 4px;font-size:11px;font-weight:800;box-shadow:0 3px 0 var(--line)}
+.mvs b{display:block;font-family:"Baloo 2",Nunito,sans-serif;font-size:21px;line-height:1.1}
+.chips.c{justify-content:center}
+.search{height:48px;border-radius:16px;border:3px solid var(--line);background:#fff;padding:0 14px;font:inherit;font-size:16px;font-weight:700;color:var(--ink);flex:none;width:100%}
+.search:focus{outline:none;border-color:var(--pri)}
+.filt{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;font-weight:800;font-size:13px;color:var(--mute)}
+.filt div{display:flex;gap:2px;overflow:auto}.filt button{border:3px solid transparent;border-radius:50%;padding:2px;flex:none;display:grid}.filt button.on{border-color:var(--pri)}
+.filt img{width:32px;height:32px;object-fit:contain}.filt .avl{width:32px;height:32px;font-size:14px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:none}
+.btn.sm{height:50px;font-size:16px;border-radius:18px}
+.btn.red{background:#D93025;box-shadow:0 6px 0 #9C1F17}
+a.btn{display:grid;place-items:center;text-decoration:none}
+.play.warn{background:#FFC83D;color:#221C44}.play.warn small{color:#5A3D00}.play.warn .do{background:var(--ink);color:#fff}
+.pick{max-width:100%}.pick .avl{width:48px;height:48px}
+@media(min-width:980px){
+  #app.wide{width:min(96vw,1240px);height:min(94dvh,860px)}
+  .scr.desk{display:grid;grid-template-columns:320px minmax(0,1fr) 360px;gap:20px;padding:22px}
   .col{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
-  #cT,#cH{background:#FBEFD9;border-radius:24px;padding:14px}
-  #cT .snd,#cT .demo,#cH .snd,#cH .demo{display:none}
-  .sheet{align-items:center;justify-content:center}
-  .sheet>div{width:440px;border-radius:32px}
-  .winc{left:50%;right:auto;width:430px;margin-left:-215px;bottom:36px}
-  .lnk{display:block;text-align:center;line-height:40px}
+  #cT,#cH{background:rgba(255,255,255,.5);border-radius:24px;padding:14px}
+  .wide .sheet{align-items:center;justify-content:center}.wide .sheet>div{width:440px;border-radius:32px}
+  .wide .toast{left:auto;right:28px;bottom:28px;width:360px}
 }
-
-/* v10: bigger roster */
-.tiles{grid-template-columns:repeat(3,1fr);gap:10px}
-.tile{font-size:15px;padding:10px 4px 8px;border-radius:20px;border-width:3px}
-.tile .av{width:52px;height:52px}
-.tile:last-child:nth-child(odd){grid-column:auto;width:auto;justify-self:stretch}
-.bench.many{gap:5px;padding:10px 10px 8px}
-.bench.many .slot{width:34px;height:34px;border-width:2px}
-.bench.many .slot .av{width:30px;height:30px}
-.rows.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.rows.two .row{min-height:0;padding:7px 8px;gap:8px;align-items:flex-start}
-.rows.two .av{width:34px;height:34px}
-.rows.two .who{font-size:14px}
-.rows.two .say{font-size:12px}
-.rows.two .ok{display:none}
-.rows.two .bdg{font-size:11px;padding:3px 6px 3px 4px}
-.line{flex-wrap:wrap}
-.filt .line{flex-wrap:nowrap;overflow-x:auto;min-width:0}
-#hc{flex:none;margin-left:6px}
-.party{flex-wrap:wrap;row-gap:34px}
-.party.many .av{width:38px;height:38px}
-#tl{overflow-y:auto;padding-bottom:6px}
-#tl .row{flex:none}
-.gearb{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#fff;box-shadow:0 3px 0 var(--line);flex:none}
-
-@media(min-width:1350px){.desk .grid{grid-template-columns:repeat(4,1fr)}.desk .m{font-size:24px}.desk .m>svg{width:48px;height:48px}}
-.filt .line{scrollbar-width:none}.filt .line::-webkit-scrollbar{display:none}
-#hl,#tl{scrollbar-width:thin}
-/* v12: welcome scatter + logo slots */
-.orbit{width:100%;max-width:340px;height:300px}
-.orbit .logo{inset:auto;left:50%;top:50%;width:120px;height:120px;margin:-60px 0 0 -60px}
-.orbit .o{margin:-28px 0 0 -28px}
-.orbit .o .av{width:56px;height:56px}
-.av.lg{display:inline-grid;place-items:center}
-.av.lg{overflow:hidden}
-.av.lg img{width:100%;height:100%;object-fit:contain;display:block}
-@media(min-width:900px){
-  .scr>.art.wide{max-width:900px}
-  .orbit{max-width:720px;height:420px}
-  .orbit .logo{width:160px;height:160px;margin:-80px 0 0 -80px;border-radius:48px}
-  .orbit .logo svg{width:136px;height:136px}
-  .orbit .o{margin:-40px 0 0 -40px}
-  .orbit .o .av{width:80px;height:80px}
-}
-
-/* v13: character animations */
-.av{transform-origin:50% 88%}
-@keyframes aLook{0%,100%{transform:none}18%,40%{transform:translateX(-9%) rotate(-11deg)}58%,82%{transform:translateX(9%) rotate(11deg)}}
-@keyframes aWave{0%,100%{transform:none}14%{transform:rotate(-17deg)}28%{transform:rotate(15deg)}42%{transform:rotate(-13deg)}56%{transform:rotate(11deg)}74%{transform:rotate(-5deg)}}
-@keyframes aHop{0%,100%{transform:none}14%{transform:scale(1.13,.85)}44%{transform:translateY(-28%) scale(.93,1.09)}70%{transform:scale(1.09,.91)}}
-@keyframes aSquish{0%,100%{transform:none}30%{transform:scale(1.15,.85)}60%{transform:scale(.9,1.13)}}
-@keyframes aSpin{0%{transform:none}50%{transform:translateY(-14%) rotateY(180deg)}100%{transform:rotateY(360deg)}}
-@keyframes aNod{0%,100%{transform:none}25%{transform:translateY(7%) rotate(4deg)}50%{transform:none}75%{transform:translateY(7%) rotate(-4deg)}}
-.av.a-look{animation:aLook 1.7s ease-in-out}
-.av.a-wave{animation:aWave 1.1s ease-in-out}
-.av.a-hop{animation:aHop .8s ease-in-out}
-.av.a-squish{animation:aSquish .8s ease-in-out}
-.av.a-spin{animation:aSpin .9s ease-in-out}
-.av.a-nod{animation:aNod 1s ease-in-out}
-@keyframes drift{0%,100%{transform:translate(0,0)}25%{transform:translate(12px,-9px)}50%{transform:translate(-7px,11px)}75%{transform:translate(-12px,-6px)}}
-.orbit .o{animation:drift 11s ease-in-out infinite;cursor:pointer}
-.bub{position:absolute;left:50%;bottom:calc(100% + 6px);background:#fff;color:var(--ink);border-radius:12px;padding:4px 10px;font-weight:800;font-size:14px;line-height:1.2;box-shadow:0 3px 0 var(--line);white-space:nowrap;pointer-events:none;z-index:4;animation:bub 1.7s both}
-.bub:after{content:"";position:absolute;left:50%;top:100%;margin-left:-6px;border:6px solid transparent;border-top-color:#fff;border-bottom:0}
-@keyframes bub{0%{opacity:0;transform:translateX(-50%) scale(.3)}14%,78%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
-@media(hover:hover){.tile:hover .av,button.row:hover .av,.line button:hover .av{animation:aHop .7s ease-in-out}}
-
-/* v14: conflict screen */
-.tug{gap:clamp(22px,7vw,40px);position:relative}
-.tug.done .prize,.tug.done .av{animation:none}
-.prize svg{width:52%;height:52%}
-.prize{flex:none}
-@media(min-width:900px){
-  .tug{gap:84px}
-  .scr>.art:has(.tug){max-width:820px}
-  .tug .av{width:136px;height:136px}
-  .prize{width:108px;height:108px;border-radius:32px}
-}
-
-/* v15: focus + time back */
-.tb{display:flex;align-items:center;gap:12px;background:#fff;border-radius:20px;height:62px;padding:0 14px 0 10px;box-shadow:0 5px 0 var(--line);flex:none;width:100%;text-align:left}
-.tb small{display:block;font-size:11px;letter-spacing:1px;font-weight:800;color:#128A53}
-.tb b{font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-size:24px;line-height:1.05;display:block}
-.bars{display:flex;align-items:flex-end;gap:4px;height:36px;margin-left:auto}
-.bars i{width:9px;border-radius:4px;background:#CBE9DA}
-.bars i:last-child{background:var(--grn)}
-.tb .up{font-weight:800;font-size:13px;color:#128A53;white-space:nowrap}
-.bigbars{display:flex;justify-content:center;align-items:flex-end;gap:12px;height:150px;margin-top:16px}
-.bigbars div{width:66px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;font-size:11px;font-weight:800;color:var(--mute);white-space:nowrap}
-.bigbars span{color:var(--ink);font-size:12px}
-.bigbars i{width:100%;border-radius:12px 12px 5px 5px;background:#CBE9DA;transform-origin:bottom;animation:grow .6s cubic-bezier(.2,1.3,.4,1) both}
-.bigbars div:last-child i{background:var(--grn)}
-@keyframes grow{from{transform:scaleY(0)}}
-.fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
-.fgrid .m{height:74px;font-size:13px;border-radius:16px;box-shadow:0 4px 0 rgba(0,0,0,.2)}
-.m.foc{box-shadow:0 6px 0 rgba(0,0,0,.2),0 0 0 4px var(--bg),0 0 0 8px var(--yel)}
-.mv{display:flex;flex-direction:column;gap:10px;height:100%;min-height:0;text-align:left}
-.sheet .mv{height:min(76vh,640px)}
-.mvi{width:38px;height:38px;border-radius:13px;background:var(--c);display:grid;place-items:center;color:#fff;flex:none}
-.mvo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;line-height:1.25;flex:none}
-.mvo .av{width:30px;height:30px;flex:none}
-.mvs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:none}
-.mvs div{background:#fff;border-radius:16px;padding:8px 6px;text-align:center;font-size:11px;font-weight:800;box-shadow:0 3px 0 var(--line)}
-.mvs b{display:block;font-family:"Baloo 2",Nunito,system-ui,sans-serif;font-size:22px;line-height:1.1}
-.mvw{background:var(--yel);border-radius:14px;padding:8px 12px;font-weight:800;font-size:13px;flex:none}
-.mvh{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;opacity:.6;flex:none;margin-top:2px}
-.mvb{display:flex;flex-direction:column;gap:6px;flex:none}
-.mvr{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px}
-.mvr .av{width:28px;height:28px;flex:none}
-.mvr .nm{width:38%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mvr .nm small{display:block;font-weight:700;font-size:10px;opacity:.65;overflow:hidden;text-overflow:ellipsis}
-.mvr .bar{flex:1;height:12px;border-radius:99px;background:var(--line);overflow:hidden}
-.mvr .bar i{display:block;height:100%;border-radius:99px}
-.mvd{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:74px;flex:none}
-.mvd span{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;min-width:0}
-.mvd i{display:block;width:100%;border-radius:8px 8px 4px 4px;min-height:4px}
-.mvd em{font-style:normal;font-size:11px;font-weight:900;height:13px;line-height:13px}
-.mvd small{font-size:10px;font-weight:800;opacity:.6}
-.mv .rows{overflow:auto}
-.xn{background:var(--ink);color:#fff;border-radius:99px;padding:1px 8px;font-size:12px;font-weight:900;margin-left:6px;white-space:nowrap}
-.m.pick{box-shadow:0 6px 0 rgba(0,0,0,.2),0 0 0 4px var(--bg),0 0 0 8px var(--ink)}
-
-.fst{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:50%;background:var(--yel);display:grid;place-items:center;animation:pop .4s}
-
-/* v16: playbook training flow */
-.steps{display:flex;align-items:center;gap:6px;margin-bottom:10px}
-.st{display:flex;align-items:center;gap:6px;background:#fff;border-radius:99px;padding:5px 13px 5px 5px;font-weight:800;font-size:14px;color:var(--mute);box-shadow:0 3px 0 var(--line);transition:transform .3s cubic-bezier(.3,1.6,.5,1),background .3s,color .3s}
-.st b{width:24px;height:24px;border-radius:50%;background:#E7E1F5;color:var(--mute);display:grid;place-items:center;font-size:13px}
-.st.on{background:var(--pri);color:#fff;transform:scale(1.14);box-shadow:0 3px 0 var(--priD)}
-.st.on b{background:#fff;color:var(--pri)}
-.st.ok{color:var(--ink)}
-.st.ok b{background:var(--grn);color:#fff;font-size:0}
-.st.ok b:after{content:"\2713";font-size:14px}
-.steps>i{width:18px;height:4px;border-radius:4px;background:#E7DCC3}
-.trn{position:relative;width:120px;height:120px;display:grid;place-items:center;flex:none}
-.trn .tring{position:absolute;left:-12px;top:-12px;width:144px;height:144px;transform:rotate(-90deg);opacity:0;transition:opacity .3s}
-.tring circle{fill:none;stroke-width:6;stroke-linecap:round}
-.tring .rb{stroke:#EFE4CC}
-.tring .rf{stroke:var(--grn);stroke-dasharray:339.3;stroke-dashoffset:339.3}
-.hero.waiting .tring{opacity:1;animation:spinr 1.1s linear infinite}
-.hero.waiting .rf{stroke-dashoffset:255;stroke:var(--pri)}
-@keyframes spinr{to{transform:rotate(270deg)}}
-.hero.training .tring,.hero.grad .tring{opacity:1}
-.hero.training .rf{transition:stroke-dashoffset 1.9s linear;stroke-dashoffset:0}
-.hero.grad .rf{stroke-dashoffset:0}
-.hero .book{transition:transform .6s cubic-bezier(.3,1.4,.5,1),opacity .2s}
-.hero.held .book{transform:translate(-66px,30px) scale(.5) rotate(-10deg);z-index:4}
-.hero.waiting #bw .av{animation:aLook 1.6s ease-in-out infinite}
-.hero.training #bw .av{animation:aNod .7s ease-in-out infinite}
-.hero.grad #bw .av{animation:aHop .7s ease-in-out 2}
-.kn{position:absolute;left:52%;top:62%;width:11px;height:11px;border-radius:3px;opacity:0;pointer-events:none;z-index:5}
-.hero.training .kn{animation:learn 1s ease-in infinite;animation-delay:calc(var(--k)*.17s)}
-@keyframes learn{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(-78px,-64px) scale(1.15) rotate(220deg)}}
-.cap{position:absolute;top:-30px;left:50%;margin-left:-40px;width:80px;opacity:0;z-index:5;pointer-events:none}
-.hero.grad .cap{animation:crown .7s cubic-bezier(.3,1.6,.5,1) forwards}
-.hero.leaving .tring,.hero.leaving .cap,.hero.leaving .book,.hero.leaving .kn{opacity:0!important;animation:none}
-.lnks{display:flex;justify-content:center;gap:4px 20px;flex-wrap:wrap}
-.slot:not(.in) .av{display:none!important}
-@media(min-width:900px){.pb{transform:scale(1.25)}}
-
-/* v17: welcome value proposition */
-.vp{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:12px}
-.orbit{height:100%;max-height:300px}
-@media(min-width:900px){.orbit{max-height:420px}}
-.vp span{display:inline-flex;align-items:center;gap:5px;background:#fff;border-radius:99px;padding:6px 11px 6px 8px;font-weight:800;font-size:12.5px;box-shadow:0 3px 0 var(--line);white-space:nowrap}
-.btn.big{font-size:27px;height:74px;border-radius:24px}
-.fine{text-align:center;font-weight:800;font-size:13px;color:var(--mute);margin-top:-2px}
-#vl{display:inline-block}
-#vl.vsw{animation:vl .45s cubic-bezier(.2,1.3,.4,1)}
-@keyframes vl{from{opacity:0;transform:translateY(10px)}}
-.bub{transform:translateX(var(--tx,-50%))}
-.bub:after{left:var(--tl,50%)}
-@keyframes bub{0%{opacity:0;transform:translateX(var(--tx,-50%)) scale(.3)}14%,78%{opacity:1;transform:translateX(var(--tx,-50%)) scale(1)}100%{opacity:0;transform:translateX(var(--tx,-50%)) translateY(-8px)}}
-.bub.fix{background:var(--yel);box-shadow:0 3px 0 #E0A400}
-.bub.fix:after{border-top-color:var(--yel)}
-@media(min-width:900px){.vp span{font-size:14px;padding:8px 14px 8px 10px}}
-
-/* v19: eleven AIs */
-@media(max-width:899px){.word{display:none}}
-.tiles.four{grid-template-columns:repeat(4,1fr);gap:8px}
-.tiles.four .tile{font-size:12.5px;padding:8px 2px 7px;border-radius:16px;box-shadow:0 4px 0 var(--line)}
-.tiles.four .tile .av{width:44px;height:44px}
-.tiles.four .tile .ck{width:24px;height:24px;top:-6px;right:-6px}
-.bench.many{flex-wrap:wrap;justify-content:center;max-width:310px}
-.rows.two{overflow-y:auto}
-.line.many button{padding:2px;border-width:3px}
-.line.many .av{width:42px;height:42px}
-.orbit .o{margin:-24px 0 0 -24px}
-.orbit .o .av{width:48px;height:48px}
-@media(min-width:900px){
-  .tiles.four .tile{font-size:14px;padding:10px 4px 8px}
-  .tiles.four .tile .av{width:52px;height:52px}
-  .orbit .o{margin:-36px 0 0 -36px}
-  .orbit .o .av{width:72px;height:72px}
-}
-
-/* real app */
-a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
-textarea.field{height:130px;padding:12px 14px;font-size:15px;line-height:1.35;resize:none;font-family:inherit}
-.err{color:#B3261E!important}
-@media(max-height:640px){h1{font-size:26px}p{font-size:15px}.btn{height:54px}.row{min-height:52px;padding:5px 10px}.orbit{transform:scale(.8)}}
-@media(prefers-reduced-motion:reduce){
-  *,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
-  .conf,.winc .fx,.bub{display:none}
-}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<div class="app" id="app">
-  <header class="top" id="top">
-    <button class="back" id="back" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#221C44" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <div class="bar" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" id="bar"><i></i></div>
-    <span id="sndTop"></span>
-  </header>
-  <main class="scr" id="scr"></main>
-</div>
-
+<div id="app"><div class="scr" id="scr"></div></div>
 <script>
-/* ---------- demo data ---------- */
-const AIS={
-  chatgpt:{reach:['Docs','Budget sheet'],n:'ChatGPT',c:'#16B67F',d:['writing','money'],say:'Good at writing and money. I can reach your docs.'},
-  claude:{reach:['Inbox','Code repo'],n:'Claude',c:'#F2793D',d:['code','email','writing'],say:'Good at code and email. I can reach your inbox.'},
-  grok:{reach:['Feeds','Inbox'],n:'Grok',c:'#3B3F5C',d:['social','email'],say:'Good at social and email. I can reach your feeds.'},
-  gemini:{reach:['Nothing yet'],n:'Gemini',c:'#3A86FF',d:[],fresh:true,say:"I'm new here. No history yet!"},
-  muse:{reach:['Budget','Shopping list'],n:'Muse',c:'#9B5DE5',d:['home','money'],say:'Good at home and money. I can reach your budget.'},
-  perplexity:{reach:['The web'],n:'Perplexity',c:'#0E9AA7',d:['research'],say:'Good at research. I can reach the web.'},
-  devin:{reach:['Code repo'],n:'Devin',c:'#D6336C',d:['code'],say:'Good at code. I can reach your repo.'},
-  victor:{reach:['Nothing yet'],n:'Victor AI',c:'#C2410C',d:[],fresh:true,say:"I'm new here. No history yet!"},
-  copilot:{reach:['Outlook','Teams'],n:'Copilot',c:'#2563EB',d:['calendar'],say:'Good at calendar. I can reach Outlook and Teams.'},
-  hermes:{reach:['The web','Your files'],n:'Hermes',c:'#B7791F',d:['research'],say:'Good at research. I can reach the web and your files.'},
-  openclaw:{reach:['Your computer'],n:'OpenClaw',c:'#DC2626',d:['home'],say:'Good at errands. I can reach your computer.'},
-  other:{reach:['Nothing yet'],n:'Other',c:'#7A8094',d:[],fresh:true,say:"I'm new here. No history yet!"}
-};
-for(const k in AIS){AIS[k].d=[];AIS[k].reach=['Nothing yet'];AIS[k].fresh=true;AIS[k].say="I'm new here. No history yet!"}
-const ORDER=['chatgpt','claude','grok','gemini','muse','perplexity','devin','victor','copilot','hermes','openclaw','other'];
-const DOM={
-  money:{n:'Money',c:'#22C27A',long:'money tracking',role:'Money helper'},
-  email:{n:'Email',c:'#FF6B9A',long:'work email',role:'Email helper'},
-  calendar:{n:'Calendar',c:'#FFA62B',long:'your calendar',role:'Calendar helper'},
-  code:{n:'Code',c:'#5B4BFF',long:'code',role:'Code helper'},
-  home:{n:'Household',c:'#22B8CF',long:'household stuff',role:'Household helper'},
-  writing:{n:'Writing',c:'#F2545B',long:'writing drafts',role:'Writing helper'},
-  social:{n:'Social',c:'#9B5DE5',long:'social posts',role:'Social helper'},
-  research:{n:'Research',c:'#3A86FF',long:'research',role:'Research scout'}
-};
-const WINS={money:'Paid the electric bill',email:'Cleared 14 emails',calendar:"Booked Tuesday's call",code:'Fixed the login bug',home:'Ordered the groceries',writing:'Drafted the newsletter',social:'Scheduled 3 posts',research:'Compared 5 vendors'};
-const DORDER=['money','email','calendar','code','home','writing','social','research'];
-const PRESETS=['calendar','research','home','social','code','email','money','writing'];
-const ICON={
-  email:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7.5l8.5 6 8.5-6"/>',
-  calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-  code:'<path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/>',
-  money:'<circle cx="12" cy="12" r="9"/><path d="M14.6 9.6c-.6-.9-1.5-1.4-2.6-1.4-1.4 0-2.5.8-2.5 1.9 0 2.6 5 1.2 5 3.9 0 1.1-1.1 1.9-2.5 1.9-1.1 0-2-.5-2.6-1.4M12 6.5v11"/>',
-  home:'<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
-  writing:'<path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/>',
-  social:'<path d="M4 5h16v11H10l-4 4v-4H4z"/>',
-  research:'<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>',
-  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  grid:'<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
-  team:'<circle cx="9" cy="9" r="3.5"/><path d="M3 19c.5-3.5 3-5 6-5s5.5 1.5 6 5M16 6.5a3 3 0 0 1 0 6M18 14.5c1.8.6 2.8 2 3 4.5"/>',
-  star:'<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"/>',
-  down:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
-  snd:'<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/>',
-  mute:'<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>',
-  gear:'<circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
-  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-  power:'<path d="M12 4v8"/><path d="M7.5 7.5a7 7 0 1 0 9 0"/>',
-  trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7"/>'
-};
-const ic=(k,s=22,col='#fff')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+const IC={money:'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M15 9.5C14.4 8.5 13.3 8 12 8c-1.700 0-3 .9-3 2.200 0 3 6 1.400 6 4.300 0 1.300-1.300 2.200-3 2.200-1.400 0-2.600-.6-3.200-1.600M12 6v12',mail:'M3 6h18v12H3zM3 7l9 6 9-6',calendar:'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',home:'M3 11l9-7 9 7M5 10v10h14V10M10 20v-6h4v6',chat:'M4 5h16v11H9l-5 4z',pencil:'M4 20l1-4L16 5l3 3L8 19zM14 7l3 3',search:'M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14M16 16l5 5',plane:'M3 12l18-8-6 17-3-7zM12 14l9-10',code:'M8 7l-5 5 5 5M16 7l5 5-5 5',doc:'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7',people:'M9 5a3 3 0 1 0 0 6a3 3 0 1 0 0-6M3 20c0-3.300 2.700-6 6-6s6 2.700 6 6M16 5.500a3 3 0 0 1 0 5.500M17 14c2.300.5 4 2.600 4 5','case':'M3 8h18v12H3zM9 8V5h6v3M3 13h18',cart:'M3 4h3l2.500 11h10l2-8H7M9.500 20a1 1 0 1 0 0-2a1 1 0 0 0 0 2M17.500 20a1 1 0 1 0 0-2a1 1 0 0 0 0 2',check:'M5 12l5 5L20 7',back:'M15 5l-7 7 7 7'};
+const ic=(k,s=24,c='#fff',w=2.4)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
+const coach=(s=96)=>`<svg width="${s}" height="${s}" viewBox="0 0 120 120" role="img" aria-label="Coach"><path d="M20 80c0-27 17-46 40-46s40 19 40 46c0 20-15 30-40 30S20 100 20 80z" fill="#5B4BFF"/><path d="M29 47c2-19 15-30 31-30s29 11 31 30z" fill="#FFC83D"/><path d="M27 44h66c9 0 18 3 23 9 1 2 0 3-2 3H27z" fill="#F2A900"/><circle cx="60" cy="17" r="4" fill="#F2A900"/><circle cx="47" cy="68" r="8" fill="#fff"/><circle cx="73" cy="68" r="8" fill="#fff"/><circle cx="49" cy="69" r="3.500" fill="#221C44"/><circle cx="75" cy="69" r="3.500" fill="#221C44"/><path d="M50 84q10 8 20 0" fill="none" stroke="#fff" stroke-width="3.500" stroke-linecap="round"/><path d="M38 88L60 106L82 88" fill="none" stroke="#FFC83D" stroke-width="3.500" stroke-linecap="round" stroke-linejoin="round"/><rect x="62" y="100" width="16" height="8" rx="3" fill="#fff" stroke="#221C44" stroke-width="2.500"/><circle cx="58" cy="106" r="8" fill="#fff" stroke="#221C44" stroke-width="2.500"/><circle cx="58" cy="106" r="2.500" fill="#221C44"/></svg>`;
+const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+function confetti(n=46){if(RM)return;const C=['#5B4BFF','#FFC83D','#22C27A','#FF6B9A','#22B8CF','#F2545B'],app=$('#app');for(let k=0;k<n;k++){const e=document.createElement('i');e.className='cf';e.style.cssText=`left:${Math.random()*100}%;background:${C[k%6]};--x:${(Math.random()*160-80)|0}px;--r:${(Math.random()*900+360)|0}deg;--t:${(1.2+Math.random()*1.1).toFixed(2)}s;animation-delay:${(Math.random()*.35).toFixed(2)}s`;app.appendChild(e);setTimeout(()=>e.remove(),2900)}}
+function ding(f=880){try{const A=new (window.AudioContext||window.webkitAudioContext)(),o=A.createOscillator(),g=A.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.1,A.currentTime);g.gain.exponentialRampToValueAtTime(.001,A.currentTime+.35);o.connect(g);g.connect(A.destination);o.start();o.stop(A.currentTime+.36)}catch(e){}}
+function whistle(){try{const A=new (window.AudioContext||window.webkitAudioContext)(),o=A.createOscillator(),l=A.createOscillator(),lg=A.createGain(),g=A.createGain();o.type='sine';o.frequency.value=2350;l.frequency.value=38;lg.gain.value=160;l.connect(lg);lg.connect(o.frequency);g.gain.setValueAtTime(0,A.currentTime);g.gain.linearRampToValueAtTime(.12,A.currentTime+.03);g.gain.setValueAtTime(.12,A.currentTime+.45);g.gain.linearRampToValueAtTime(0,A.currentTime+.55);o.connect(g);g.connect(A.destination);o.start();l.start();o.stop(A.currentTime+.6);l.stop(A.currentTime+.6)}catch(e){}}
+/* Coach AI client. Assembled into public/index.html by build.py (styles and the shared helpers come from there). */
+const AIS={chatgpt:{n:'ChatGPT'},claude:{n:'Claude'},grok:{n:'Grok'},gemini:{n:'Gemini'},muse:{n:'Muse'},perplexity:{n:'Perplexity'},devin:{n:'Devin'},victor:{n:'Victor AI'},copilot:{n:'Copilot'},hermes:{n:'Hermes'},openclaw:{n:'OpenClaw'},other:{n:'Other'}};
+const ORDER=Object.keys(AIS), CONN={grok:1,claude:1,chatgpt:1};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const N=id=>id==='other'&&S.otherName?esc(S.otherName):AIS[id]?AIS[id].n:'Someone';
+const av=id=>id==='other'||!AIS[id]?`<span class="avl" role="img" aria-label="${N(id)}">${N(id).slice(0,1)}</span>`:`<img src="logos/${id}.png" alt="${N(id)}">`;
+const SP={personal:{n:'Personal',icon:'home',cls:'per',m:[['email','Email','mail','#FF6B9A'],['calendar','Calendar','calendar','#FFA62B'],['messages','Messages','chat','#9B5DE5'],['files','Files','doc','#3A86FF'],['payments','Payments','money','#22C27A'],['social','Social','people','#F2545B'],['shopping','Shopping','cart','#5B4BFF'],['home','Home','home','#22B8CF']]},
+ work:{n:'Work',icon:'case',cls:'wrk',m:[['email','Email','mail','#FF6B9A'],['calendar','Calendar','calendar','#FFA62B'],['chat','Chat','chat','#9B5DE5'],['files','Files','doc','#3A86FF'],['accounting','Accounting','money','#22C27A'],['social','Social','people','#F2545B'],['code','Code','code','#5B4BFF'],['clients','Clients','case','#22B8CF']]}};
+const SHARED=['personal:files','work:files','work:code'];
+const TASK={email:'Clear out my promo emails and list what needs a reply.',calendar:'Find me a free hour this week and hold it.',messages:'Summarize my unread messages.',chat:'Summarize what I missed in chat today.',payments:'List my bills due this week.',accounting:'List the invoices still unpaid.',social:'Draft one post for me to approve.',shopping:'Track my open orders.',home:'Check the thermostat schedule.',clients:'List the clients I owe a reply.'};
+const S={authed:false,name:'',email:'',team:null,otherName:null,scope:'both',sel:[],keys:{},codes:{},joined:{},skipped:{},benched:{},reach:{},seen:{},pick:{},mode:{personal:'on',work:'on'},quiet:false,onboarded:false,play:0,
+  log:[],tasks:[],needs:[],skew:0,i:0,steps:[],space:'personal',tab:'pad',fa:null,q:'',wait:false,spot:null,arrived:false,fresh:[],known:null};
+const $=(q,e=document)=>e.querySelector(q), $$=(q,e=document)=>[...e.querySelectorAll(q)];
+const DESK=matchMedia('(min-width:980px)');
+const now=()=>Date.now()-S.skew;
+const ago=ts=>{const m=Math.max(0,Math.round((now()-ts)/6e4));return m<2?'just now':m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`};
+const day=ts=>{const t=new Date();t.setHours(0,0,0,0);return ts>=t.getTime()?'Today':ts>=t.getTime()-864e5?'Yesterday':new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})};
+const hm=m=>`${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`;
+const copy=t=>{try{navigator.clipboard.writeText(t)}catch(e){}};
 
-/* original mascot avatars (not brand logos) */
-const BODY={
-  chatgpt:c=>`<path d="M32 12V5" stroke="${c}" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="4" r="4" fill="${c}"/><rect x="7" y="12" width="50" height="46" rx="18" fill="${c}"/>`,
-  claude:c=>`<path d="M24 14l-3-9M32 12V3M40 14l3-9" stroke="${c}" stroke-width="4" stroke-linecap="round"/><ellipse cx="32" cy="36" rx="26" ry="23" fill="${c}"/>`,
-  grok:c=>`<path d="M12 22L9 6l14 9zM52 22l3-16-14 9z" fill="${c}"/><rect x="7" y="13" width="50" height="45" rx="12" fill="${c}"/>`,
-  gemini:c=>`<circle cx="11" cy="18" r="8" fill="${c}"/><circle cx="53" cy="18" r="8" fill="${c}"/><circle cx="32" cy="36" r="25" fill="${c}"/>`,
-  muse:c=>`<path d="M32 13c0-7 5-10 11-10 0 7-4 10-11 10z" fill="#22C27A"/><rect x="9" y="12" width="46" height="47" rx="23" fill="${c}"/>`,
-  perplexity:c=>`<path d="M32 10l21 12v24L32 58 11 46V22z" fill="${c}" stroke="${c}" stroke-width="7" stroke-linejoin="round"/>`,
-  devin:c=>`<path d="M12 30c0-26 40-26 40 0" stroke="${c}" stroke-width="4.5" fill="none"/><rect x="2" y="28" width="10" height="18" rx="5" fill="${c}"/><rect x="52" y="28" width="10" height="18" rx="5" fill="${c}"/><rect x="9" y="14" width="46" height="45" rx="15" fill="${c}"/>`,
-  victor:c=>`<path d="M22 12l10-9 10 9" stroke="${c}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="36" r="25" fill="${c}"/>`,
-  copilot:c=>`<rect x="6" y="12" width="52" height="46" rx="20" fill="${c}"/><circle cx="32" cy="8" r="5" fill="${c}"/>`,
-  hermes:c=>`<path d="M8 26L2 12l14 6zM56 26l6-14-14 6z" fill="${c}"/><ellipse cx="32" cy="36" rx="24" ry="23" fill="${c}"/>`,
-  openclaw:c=>`<path d="M10 20c-8-8-2-18 6-16-4 4-2 8 2 10zM54 20c8-8 2-18-6-16 4 4 2 8-2 10z" fill="${c}"/><rect x="8" y="14" width="48" height="44" rx="18" fill="${c}"/>`,
-  other:c=>`<path d="M32 2v10M27 7h10" stroke="${c}" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="37" r="24" fill="${c}"/>`
-};
-const LOGOS={chatgpt:'logos/chatgpt.png',claude:'logos/claude.png',grok:'logos/grok.png',gemini:'logos/gemini.png',muse:'logos/muse.png',perplexity:'logos/perplexity.png',devin:'logos/devin.png',victor:'logos/victor.png',copilot:'logos/copilot.png',hermes:'logos/hermes.png',openclaw:'logos/openclaw.png'};
-function av(id,cls=''){
-  const a=AIS[id];
-  if(LOGOS[id])return `<span class="av lg ${cls}" role="img" aria-label="${a.n}"><img src="${LOGOS[id]}" alt=""></span>`;
-  return `<span class="av ${cls}" role="img" aria-label="${a.n}"><svg viewBox="0 0 64 64">${BODY[id](a.c)}
-  <circle cx="23" cy="33" r="6.5" fill="#fff"/><circle cx="41" cy="33" r="6.5" fill="#fff"/>
-  <circle cx="24.5" cy="34" r="3" fill="#221C44"/><circle cx="42.5" cy="34" r="3" fill="#221C44"/>
-  <path d="M24 45c4 5 12 5 16 0" stroke="#fff" stroke-width="3.2" stroke-linecap="round" fill="none"/></svg></span>`;
-}
-const CAP=`<svg class="cap" viewBox="0 0 80 48" aria-hidden="true"><path d="M20 24v12c8 8 32 8 40 0V24" fill="#3D2FD0"/><path d="M40 4l36 14-36 14L4 18z" fill="#221C44"/><path d="M70 20v14" stroke="#FFC83D" stroke-width="3.5" stroke-linecap="round"/><circle cx="70" cy="37" r="4.5" fill="#FFC83D"/></svg>`;
-const CROWN=`<svg class="crown" viewBox="0 0 76 56" aria-hidden="true"><path d="M6 48L2 14l18 14L38 4l18 24 18-14-4 34z" fill="#FFC83D" stroke="#E0A400" stroke-width="3" stroke-linejoin="round"/><circle cx="38" cy="36" r="5" fill="#F2545B"/><circle cx="20" cy="38" r="3.5" fill="#5B4BFF"/><circle cx="56" cy="38" r="3.5" fill="#22C27A"/></svg>`;
-
-/* ---------- state ---------- */
-const S={i:0,name:'',email:'',sel:[],joined:{},decided:{},presets:{},chief:null,mode:'on',steps:[],wins:[],wk:0,needs:[],extra:{},blocked:0,keys:{},codes:{},rep:{},seen:{},tasks:[],fresh:[],authed:false,onboarded:false,otherName:null,skew:0,_known:null,tab:'pad',q:'',fa:null,over:{},sound:true,team:null,focus:null,skipped:{},failed:{},fixed:false,quiet:false,benched:{},manage:false};
-const RM=matchMedia('(prefers-reduced-motion: reduce)').matches, DESK=matchMedia('(min-width:900px)');
-const URLS={chatgpt:'https://chatgpt.com',claude:'https://claude.ai',grok:'https://grok.com',gemini:'https://gemini.google.com',perplexity:'https://www.perplexity.ai',devin:'https://devin.ai',copilot:'https://copilot.microsoft.com'};
-const $=(q,r=document)=>r.querySelector(q), $$=(q,r=document)=>[...r.querySelectorAll(q)];
-const esc=s=>s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-let timers=[],iv=null; const later=(f,ms)=>timers.push(setTimeout(f,RM?Math.min(ms,250):ms));
-const sel=()=>ORDER.filter(id=>S.sel.includes(id));
-const live=()=>sel().filter(id=>!S.skipped[id]&&!S.benched[id]);
-const freshIds=()=>live().filter(id=>AIS[id].fresh);
-function conflicts(){return DORDER.filter(d=>live().filter(id=>AIS[id].d.includes(d)).length>=2)}
-function holders(d){return live().filter(id=>AIS[id].d.includes(d)).slice(0,2)}
-function owners(d){
-  if(S.over[d])return S.over[d].filter(id=>live().includes(id));
-  const h=holders(d); let o=[];
-  if(h.length===1)o=h; else if(h.length>=2){const c=S.decided[d]; o=!c?[]:c==='share'?h:[c]}
-  for(const id of live())if(S.presets[id]===d&&!o.includes(id))o=o.concat(id);
-  if(S.extra[d]&&live().includes(S.extra[d])&&!o.includes(S.extra[d]))o=o.concat(S.extra[d]);
-  return o;
-}
-function presetOpts(f){const o=PRESETS.filter(d=>live().filter(id=>id!==f&&(AIS[id].d.includes(d)||S.presets[id]===d)).length===0);return o.length?o:PRESETS}
-
-/* ---------- sound (synthesized, no files) ---------- */
-let AC=null;
-function ac(){if(!S.sound)return null;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC}catch(e){return null}}
-function tone(f,t=0,d=.12,type='sine',v=.1,f2){const a=ac();if(!a)return;try{const o=a.createOscillator(),g=a.createGain(),st=a.currentTime+t;o.type=type;o.frequency.setValueAtTime(f,st);if(f2)o.frequency.exponentialRampToValueAtTime(f2,st+d);g.gain.setValueAtTime(.0001,st);g.gain.linearRampToValueAtTime(v,st+.012);g.gain.exponentialRampToValueAtTime(.0001,st+d);o.connect(g);g.connect(a.destination);o.start(st);o.stop(st+d+.03)}catch(e){}}
-function noise(t=0,d=.2,v=.06,f=1200){const a=ac();if(!a)return;try{const n=Math.floor(a.sampleRate*d),b=a.createBuffer(1,n,a.sampleRate),c=b.getChannelData(0);for(let i=0;i<n;i++)c[i]=(Math.random()*2-1)*(1-i/n);const src=a.createBufferSource(),bp=a.createBiquadFilter(),g=a.createGain();src.buffer=b;bp.type='bandpass';bp.frequency.value=f;g.gain.value=v;src.connect(bp);bp.connect(g);g.connect(a.destination);src.start(a.currentTime+t)}catch(e){}}
-const SFX={
-  tap:()=>tone(520,0,.05,'triangle',.05),
-  on:()=>{tone(523,0,.08,'triangle');tone(784,.07,.12,'triangle')},
-  off2:()=>tone(392,0,.14,'triangle',.1,220),
-  ding:()=>{tone(880,0,.25);tone(1320,.08,.3,'sine',.07)},
-  pick:()=>{tone(659,0,.1,'triangle');tone(988,.09,.18,'triangle')},
-  join:()=>{noise(0,.4,.04,900);tone(300,0,.4,'sine',.07,900);tone(1047,.62,.18,'triangle')},
-  deal:()=>[523,587,659,784,880].forEach((f,i)=>tone(f,.15+i*.18,.14,'triangle',.08)),
-  crown:()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.09,.24,'triangle')),
-  fanfare:()=>[523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,i*.11,.3,'triangle',.09)),
-  tornado:()=>{noise(0,1.9,.05,700);tone(180,0,1.9,'sawtooth',.03,1400);tone(300,.2,1.7,'sine',.06,1800)},
-  money:()=>{tone(1319,.25,.08,'square',.04);tone(1760,.33,.35,'square',.04)},
-  email:()=>{noise(.35,.6,.05,1600);tone(500,.35,.55,'sine',.05,1500)},
-  calendar:()=>{tone(130,.25,.2,'sine',.25,55);noise(.25,.08,.1,300);tone(784,.55,.22,'triangle')},
-  code:()=>[660,880,660,990,1320].forEach((f,i)=>tone(f,.3+i*.07,.06,'square',.04)),
-  home:()=>[1568,2093,1760,2349].forEach((f,i)=>tone(f,.25+i*.11,.28,'sine',.05)),
-  writing:()=>{[0,.1,.2,.3,.4].forEach(t=>noise(.4+t,.08,.05,2600));tone(784,.95,.2,'triangle')},
-  social:()=>[700,900,1100,1300].forEach((f,i)=>tone(f,.25+i*.12,.07,'sine',.1,f*1.6)),
-  research:()=>{tone(400,.3,.6,'sine',.07,1600);tone(1760,.9,.25,'triangle',.07)}
-};
-function sfx(k){if(S.sound&&SFX[k])SFX[k]()}
-function say(lines){if(!S.sound)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(lines.join(' '));u.rate=1.05;speechSynthesis.speak(u)}catch(e){}}
-function hush(){try{speechSynthesis.cancel()}catch(e){}}
-const sndBtn=()=>`<button class="snd" aria-label="Sound" aria-pressed="${S.sound}">${ic(S.sound?'snd':'mute',18,'#221C44')}</button>`;
-const TN=()=>S.team||`Team ${S.name||'Demo'}`;
-document.addEventListener('click',e=>{
-  const b=e.target.closest('.snd');
-  if(b){S.sound=!S.sound;if(!S.sound)hush();$$('.snd').forEach(x=>x.outerHTML=sndBtn());sfx('on');return}
-  if(e.target.closest('button'))sfx('tap');
-},true);
+/* ---------- rules, mirrored from the server ---------- */
+const spaces=()=>S.scope==='personal'||S.scope==='work'?[S.scope]:['personal','work'];
+const sid=(s,k)=>s+':'+k, shared=src=>SHARED.includes(src);
+const srcs=()=>spaces().flatMap(s=>SP[s].m.map(m=>sid(s,m[0])));
+const meta=src=>{const [s,k]=String(src).split(':'),m=SP[s]&&SP[s].m.find(x=>x[0]===k);return m?{s,k,n:m[1],icon:m[2],c:m[3],full:SP[s].n+' '+m[1]}:{s:null,k:null,n:'General',icon:'check',c:'#5F5A80',full:'General'}};
+const live=()=>ORDER.filter(id=>S.sel.includes(id)&&S.joined[id]&&!S.benched[id]);
+const can=src=>live().filter(id=>(S.reach[id]||[]).includes(src));
+const owners=src=>{const r=can(src);if(shared(src))return r;const p=S.pick[src];return p&&live().includes(p)?[p]:r.length===1?r:[]};
+const conflicts=()=>srcs().filter(src=>!shared(src)&&!owners(src).length&&can(src).length>1);
+const empties=()=>srcs().filter(src=>!shared(src)&&!can(src).length&&!owners(src).length);
 
 /* ---------- server sync ---------- */
 async function api(path,body){const r=await fetch('/api/'+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{});let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw Object.assign(new Error(j.error||'Something went wrong. Try again.'),{status:r.status});return j}
-const OWN=['sel','skipped','benched','decided','presets','over','extra','chief','mode','focus','team','otherName','quiet','onboarded'];
+const OWN=['scope','sel','skipped','benched','pick','mode','team','otherName','quiet','onboarded','play'];
 const ownJSON=()=>JSON.stringify(OWN.map(k=>S[k]));
 let sent='';
 function hydrate(st,all){
   S.authed=true;S.name=st.name;S.email=st.email;
-  if(all){for(const k of OWN)S[k]=st[k];sent=ownJSON()}
-  S.keys=st.keys;S.codes=st.codes;S.joined=st.joined;S.rep=st.rep;S.seen=st.seen;S.needs=st.needs;S.blocked=st.blocked;S.tasks=st.tasks;S.skew=Date.now()-st.now;
-  for(const id of ORDER){const r=st.rep[id],a=AIS[id];a.d=((r&&r.d)||[]).filter(d=>DOM[d]);a.reach=r&&r.reach&&r.reach.length?r.reach.map(esc):['Nothing yet'];a.fresh=!a.d.length;
-    a.say=a.d.length?`Good at ${a.d.map(d=>DOM[d].n.toLowerCase()).join(' and ')}.${r.reach&&r.reach.length?` I can reach ${esc(r.reach.join(', ').toLowerCase())}.`:''}`:"I'm new here. No history yet!"}
-  AIS.other.n=esc(S.otherName||'Other');
-  const wins=st.log.slice().reverse().filter(w=>AIS[w.id]&&DOM[w.d]).map(w=>({k:w.k,d:w.d,id:w.id,text:esc(w.text)+(w.by?' ('+esc(w.by)+')':''),by:w.by?esc(w.by):'',link:w.link,min:w.min||0,at:w.at}));
-  if(S._known)for(const w of wins.filter(w=>!S._known.has(w.k)).reverse())S.fresh.push(w);
-  S._known=new Set(wins.map(w=>w.k)); S.wins=wins;
+  if(all){for(const k of OWN)S[k]=st[k];S.pick=st.pick||{};sent=ownJSON()}
+  for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];
+  for(const id of Object.keys(st.joined))delete S.skipped[id];
+  S.skew=Date.now()-st.now;S.log=st.log.slice().reverse();
+  if(S.known)for(const w of S.log.filter(w=>!S.known.has(w.k)).reverse())S.fresh.push(w);
+  S.known=new Set(S.log.map(w=>w.k));
 }
 async function saveNow(){if(!S.authed)return;const j=ownJSON();if(j===sent)return;sent=j;const b={};OWN.forEach(k=>b[k]=S[k]);try{hydrate(await api('save',b),false)}catch(e){sent=''}}
 setInterval(saveNow,1200);
 async function pull(){if(!S.authed)return;try{hydrate(await api('state'),false)}catch(e){if(e.status===401)location.reload()}}
-const now=()=>Date.now()-S.skew;
-const agoTxt=ts=>{const m=Math.max(0,Math.round((now()-ts)/6e4));return m<2?'just now':m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`};
-const isQuiet=id=>!!S.joined[id]&&!S.benched[id]&&now()-(S.seen[id]||S.joined[id])>864e5;
-const seenTxt=id=>S.mode==='off'?'Not following':`Last heard from ${agoTxt(S.seen[id]||S.joined[id]||now())}`;
-const dayTxt=ts=>{const d=new Date(ts),t=new Date();t.setHours(0,0,0,0);return ts>=t.getTime()?'Today':ts>=t.getTime()-864e5?'Yesterday':d.toLocaleDateString(undefined,{month:'short',day:'numeric'})};
-function pasteSheet(id,cb){
-  const n=id?AIS[id].n:'your AI';
-  const sh=openSheet(`<h1>Paste ${n}'s reply</h1><p id="pp">Paste the whole reply. Conductor finds the report line.</p><div class="cta"><textarea class="field" id="pt" aria-label="Reply text" placeholder="CONDUCTOR-CHECKIN code=…"></textarea><button class="btn">Read it</button></div>`);
-  $('.btn',sh).onclick=async()=>{const b=$('.btn',sh);b.disabled=true;
-    try{const r=await api('paste',{text:$('#pt').value,id});hydrate(r.state,false);const bad=r.results.find(x=>!x.ok);sh.remove();const m=(bad||r.results[0]).msg.split('. ')[0];toastMsg(esc(m.length>58?m.slice(0,56)+'…':m));if(cb)cb(r)}
-    catch(e){b.disabled=false;const pp=$('#pp');pp.textContent=e.message;pp.classList.add('err')}};
-  $('#pt').focus();
-}
-function loginSheet(){
-  const sh=openSheet(`<h1>Welcome back, coach.</h1><p id="lp">Log in to your team.</p><div class="cta"><input class="field" id="le" type="email" placeholder="Email" autocomplete="email" aria-label="Email"><input class="field" id="lw" type="password" placeholder="Password" autocomplete="current-password" aria-label="Password"><button class="btn">Log in</button></div>`);
-  $('.btn',sh).onclick=async()=>{try{hydrate(await api('login',{email:$('#le').value,password:$('#lw').value}),true);sh.remove();enter()}catch(e){const lp=$('#lp');lp.textContent=e.message;lp.classList.add('err')}};
-}
-function enter(){S.sel.forEach(id=>{if(S.onboarded&&!S.joined[id])S.skipped[id]=true});build();go(S.onboarded?S.steps.length-1:2)}
-function copiedSheet(id,h,p){const n=AIS[id].n;if(!URLS[id])return toastMsg(`${h} Paste it into ${n}.`);
-  const sh=openSheet(`<div class="big">${av(id)}</div><h1>${h}</h1><p>${p}</p><div class="cta"><a class="btn" href="${URLS[id]}" target="_blank" rel="noopener noreferrer" style="background:${AIS[id].c};box-shadow:0 6px 0 rgba(0,0,0,.25);height:62px;border-radius:20px;color:#fff;font-weight:800;font-size:20px">Open ${n} &rarr;</a><button class="btn alt">Done</button></div>`);
-  $('button.btn',sh).onclick=()=>sh.remove()}
-async function brief(id){const n=AIS[id].n;try{const r=await api('update?id='+id);copy(r.text);copiedSheet(id,'Update copied.',`Paste it into ${n} so it knows today's team state.`)}catch(e){toastMsg('Could not build the update.')}}
-function refreshOwners(){$$('.grid .m').forEach(t=>{const o=$('.own',t);if(o)o.innerHTML=owners(t.dataset.d).map(id=>av(id)).join('')})}
-const CONF=['#5B4BFF','#FFC83D','#22C27A','#FF6B9A','#3A86FF','#F2545B'];
-function celebrate(w){
-  const d=w.d,id=w.id,tile=$(`.grid .m[data-d="${d}"]`),bump=()=>{const wc=$('#wc'),wb=$('#wins');if(wc)wc.textContent=todayCount();if(wb){wb.classList.remove('bump');void wb.offsetWidth;wb.classList.add('bump')}};
-  if(S.quiet||!tile){if(tile){tile.classList.add('win');setTimeout(()=>tile.classList.remove('win'),900)}tone(880,0,.08,'sine',.04);refreshDone();bump();return}
-  const combo=todayCount()%3===0; sfx(d); if(combo)setTimeout(()=>sfx('fanfare'),900);
-  if(combo)$('#app').insertAdjacentHTML('beforeend',`<div class="conf">${Array.from({length:40},(_,k)=>`<i style="left:${Math.random()*100}%;background:${CONF[k%6]};animation-duration:${1.4+Math.random()*1.4}s;animation-delay:${Math.random()*.5}s"></i>`).join('')}</div>`);
-  tile.classList.add('win');
-  $('#app').insertAdjacentHTML('beforeend',`<div class="winc fx-${d}" role="status">${av(id)}<div class="t"><small>${AIS[id].n} finished${combo?' · 3 in a row!':''}${d===S.focus?' · your focus':''}</small><div>${w.text}</div></div><span class="stamp">${ic('check',26)}</span>${fx(d)}</div>`);
-  const card=$('.winc');
-  setTimeout(()=>{card.classList.add('out');refreshDone();bump()},2400);
-  setTimeout(()=>{card.remove();tile.classList.remove('win');$$('.conf').forEach(e=>e.remove())},2850);
-}
-const todayCount=()=>{const t=new Date();t.setHours(0,0,0,0);return S.wins.filter(w=>w.at>=t.getTime()).length};
-async function padTick(){
-  await pull(); if(!S.steps[S.i]||S.steps[S.i].t!=='pad')return;
-  const nb=$('#need'); if(nb&&nb._badge)nb._badge();
-  if(!$('.sheet'))refreshOwners();
-  if(S.fresh.length&&!$('.sheet')&&!$('.winc')){celebrate(S.fresh.shift());if(!DESK.matches&&S.tab==='hist'&&document.activeElement!==$('#q'))histView($('#scr'))}
-  if(S.fresh.length>6)S.fresh=S.fresh.slice(-3);
-}
-function resetTeam(){S.decided={};S.presets={};S.chief=null;S.extra={};S.over={};S.fa=null;S.q='';S.skipped={};S.failed={};S.fixed=false;S.benched={};S.manage=false}
-function build(){
-  const s=sel().length?sel():['chatgpt','claude','grok'];
-  S.steps=[{t:'welcome'},{t:'signup'},{t:'pick'},...s.map(id=>({t:'playbook',id})),{t:'report'},{t:'reveal'},
-    ...conflicts().map(d=>({t:'conflict',d})),...freshIds().map(id=>({t:'preset',id})),{t:'chief'},{t:'done'},{t:'pad'}];
-}
-function go(n){timers.forEach(clearTimeout);timers=[];clearInterval(iv);S.i=Math.max(0,Math.min(n,S.steps.length-1));render()}
-const next=()=>go(S.i+1);
 
-/* ---------- shell ---------- */
-function shell(art,h,p,cta){return `<div class="art">${art}</div><div class="txt"><h1>${h}</h1>${p?`<p>${p}</p>`:''}</div><div class="cta">${cta}</div>`}
-function render(){
-  const st=S.steps[S.i], scr=$('#scr'), top=$('#top');
-  $$('.conf,.sheet,.toast,.winc').forEach(e=>e.remove());
-  top.style.display=st.t==='pad'?'none':'';
-  $('#back').hidden=S.i===0||st.t==='done'||(S.authed&&S.i<=2);
-  const pct=Math.round(S.i/(S.steps.length-2)*100);
-  $('#bar i').style.width=pct+'%'; $('#bar').setAttribute('aria-valuenow',pct);
-  scr.className='scr'; void scr.offsetWidth; scr.className=st.t==='pad'?'pad enter':'scr enter';
-  V[st.t](scr,st);
-  const h=$('h1',scr); if(h){h.tabIndex=-1;h.focus({preventScroll:true});h.style.outline='none'}
-}
-$('#back').onclick=()=>go(S.i-1);
-
-/* ---------- screens ---------- */
-const V={
-welcome(el){
-  const P=[[50,5],[24,11],[76,11],[6,34],[94,34],[5,66],[95,66],[19,89],[81,89],[38,98],[62,98],[50,112]];
-  const o=ORDER.filter(id=>id!=='other').map((id,k)=>`<span class="o" style="left:${P[k][0]}%;top:${P[k][1]}%;animation-delay:${k*-1.7}s;animation-duration:${9+k%3*2}s"><span class="bob" style="display:block;animation-delay:${k*-.4}s">${av(id)}</span></span>`).join('');
-  el.innerHTML=shell(`<div class="orbit"><div class="logo"><svg width="104" height="104" viewBox="0 0 64 64" role="img" aria-label="Conductor logo"><path d="M45 18a18 18 0 1 0 0 26" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/><circle cx="26" cy="28" r="3.8" fill="#fff"/><circle cx="36" cy="28" r="3.8" fill="#fff"/><circle cx="26.9" cy="28.6" r="1.8" fill="#221C44"/><circle cx="36.9" cy="28.6" r="1.8" fill="#221C44"/><path d="M26 35.5c3 3.5 7 3.5 10 0" stroke="#fff" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M43 32L55 15" stroke="#FFC83D" stroke-width="4.5" stroke-linecap="round"/><path d="M56.5 8.5V5M59.5 12.5h3.5M59 9.5l2.6-2.6" stroke="#FFC83D" stroke-width="2.4" stroke-linecap="round"/></svg></div>${o}</div>`,
-   'Put your AIs on one team.','<span id="vl">They stop doing the same job twice.</span>',`<button class="btn pulse big" id="go">Let's go</button><button class="lnk" id="li" style="align-self:center">I already have a team. Log in</button>`);
-  el.querySelector('.txt').insertAdjacentHTML('afterbegin','<div class="word">Conductor</div>');
-  $('.art',el).classList.add('wide');
-  $('#li').onclick=loginSheet;
-  $('.txt',el).insertAdjacentHTML('beforeend',`<div class="vp">${[['check','One owner'],['snd','One briefing'],['power','One off switch']].map(([i,t])=>`<span>${ic(i,15,'#221C44')}${t}</span>`).join('')}</div>`);
-  const VL=['They stop doing the same job twice.','Every task gets exactly one owner.','One briefing tells you what got done.','One switch stops them all.']; let vi=0;
-  const rot=()=>{const v=$('#vl');if(!v)return;vi=(vi+1)%VL.length;v.classList.remove('vsw');void v.offsetWidth;v.textContent=VL[vi];v.classList.add('vsw');timers.push(setTimeout(rot,2800))};
-  timers.push(setTimeout(rot,2800));
-  $('#go').onclick=()=>{
-    if(RM)return next();
-    const go=$('#go'),L=$('.orbit .logo'),os=$$('.orbit .o'); go.disabled=true; go.classList.remove('pulse'); $$('.bub').forEach(b=>b.remove()); sfx('tornado');
-    const lr=L.getBoundingClientRect(),cx=lr.left+lr.width/2,cy=lr.top+lr.height/2,N=28,D=1500;
-    os.forEach((o,k)=>{
-      const r=o.getBoundingClientRect(),ox=r.left+r.width/2,oy=r.top+r.height/2,r0=Math.hypot(ox-cx,oy-cy),t0=Math.atan2(oy-cy,ox-cx);
-      o.style.animation='none'; o.style.zIndex=3;
-      const kf=Array.from({length:N+1},(_,i)=>{const t=i/N,e=t*t,rad=r0*(1-e)*(1+.25*Math.sin(t*Math.PI)),th=t0+t*t*Math.PI*5.5;
-        return {transform:`translate(${cx+rad*Math.cos(th)-ox}px,${cy+rad*Math.sin(th)-oy}px) rotate(${t*720}deg) scale(${1-.92*e})`,opacity:t>.9?(1-t)*10:1}});
-      o.animate(kf,{duration:D,delay:k*70,easing:'linear',fill:'forwards'});
-    });
-    L.style.animation='none'; L.style.zIndex=4;
-    L.animate([{transform:'scale(1) rotate(0)'},{transform:'scale(1.08) rotate(-8deg)',offset:.3},{transform:'scale(1.16) rotate(8deg)',offset:.62},{transform:'scale(.82,1.2)',offset:.8},{transform:'scale(1.35,1.15)',offset:.9},{transform:'scale(1)'}],{duration:D+os.length*70+350,easing:'ease-in-out'});
-    timers.push(setTimeout(()=>sfx('crown'),D+os.length*70-100));
-    timers.push(setTimeout(next,D+os.length*70+450));
-  };
-},
-signup(el){
-  el.innerHTML=shell(`<div class="tag"><small>HELLO, COACH</small><div id="nt">${esc(S.name)||'&nbsp;'}</div></div>`,
-   "Who's the coach?",'<span id="sp">Your team is saved to your account.</span>',
-   `<input class="field" id="nm" placeholder="Your name" autocomplete="given-name" aria-label="Your name" maxlength="18" value="${esc(S.name)}">
-    <input class="field" id="em" type="email" placeholder="Email" autocomplete="email" aria-label="Email" value="${esc(S.email)}">
-    <input class="field" id="pw" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" aria-label="Password">
-    <button class="btn" id="go" disabled>Create my team</button>`);
-  const chk=()=>{S.name=$('#nm').value.trim();S.email=$('#em').value.trim();$('#nt').textContent=S.name||'\u00A0';$('#go').disabled=!(S.name&&/.+@.+\..+/.test(S.email)&&$('#pw').value.length>=8)};
-  $('#nm').oninput=$('#em').oninput=$('#pw').oninput=chk; chk();
-  $('#go').onclick=async()=>{const b=$('#go');b.disabled=true;
-    try{hydrate(await api('signup',{name:S.name,email:S.email,password:$('#pw').value}),true);build();next()}
-    catch(e){b.disabled=false;const sp=$('#sp');sp.textContent=e.message;sp.classList.add('err')}};
-},
-pick(el){
-  el.innerHTML=shell(`<div class="tiles ${ORDER.length>9?'four':''}">${ORDER.map(id=>`<button class="tile ${S.sel.includes(id)?'on':''}" style="--c:${AIS[id].c}" data-id="${id}" aria-pressed="${S.sel.includes(id)}">${av(id)}${AIS[id].n}<span class="ck">${ic('check',18)}</span></button>`).join('')}</div>`,
-   'Pick your AIs.','Tap everyone you use.',`<button class="btn" id="go">Next</button>`);
-  const upd=()=>{const n=S.sel.length;$('#go').disabled=n<2;$('#go').textContent=n<2?'Pick at least 2':`Next (${n})`};
-  $$('.tile').forEach(t=>t.onclick=()=>{
-    const id=t.dataset.id,on=!S.sel.includes(id);
-    if(id==='other'&&on)return nameOther(()=>{S.sel=[...S.sel,'other'];resetTeam();build();go(S.i)});
-    S.sel=on?[...S.sel,id]:S.sel.filter(x=>x!==id);
-    t.classList.remove('on');void t.offsetWidth;t.classList.toggle('on',on);sfx(on?'on':'off2');t.setAttribute('aria-pressed',on);
-    resetTeam();build();upd();
-  });
-  upd(); $('#go').onclick=async()=>{const b=$('#go');b.disabled=true;b.textContent='Making their keys…';await saveNow();if(sel().every(id=>S.keys[id]))next();else{b.disabled=false;b.textContent='Try again'}};
-},
-playbook(el,st){
-  const id=st.id,a=AIS[id],n=a.n,done=S.joined[id];
-  el.innerHTML=shell(`<div class="pb"><div class="steps">${['Copy',CONN[id]?'Add':'Paste','Train'].map((t,k)=>`${k?'<i></i>':''}<span class="st" data-s="${k+1}"><b>${k+1}</b>${t}</span>`).join('')}</div>
-    <div class="hero"><div class="trn"><svg class="tring" viewBox="0 0 120 120" aria-hidden="true"><circle class="rb" cx="60" cy="60" r="54"/><circle class="rf" cx="60" cy="60" r="54"/></svg><span class="bob" id="bw">${done?'':av(id)}</span>${CAP}</div><div class="book" style="--c:${a.c}"><i></i><i></i><i></i><i></i><b>KEY INSIDE</b></div>${[0,1,2,3,4,5].map(k=>`<i class="kn" style="--k:${k};background:${DOM[DORDER[k]].c}"></i>`).join('')}</div>
-    <div class="bench ${sel().length>5?'many':''}">${sel().map(x=>`<span class="slot ${S.joined[x]?'in':''}" data-id="${x}">${av(x)}</span>`).join('')}</div></div>`,
-   done?`${n} is trained.`:CONN[id]?`Add the Conductor connector to ${n}.`:`Give ${n} its playbook.`,done?'Already on the bench.':CONN[id]?(id==='grok'?'One connection covers all your Grok bots. No rules to paste.':'Add it once. No rules to paste or save.'):'One tap. Conductor handles the rest.',
-   `<button class="btn ${done?'':'pulse'}" id="go">${done?'Next':CONN[id]?'Copy connector link':'Copy playbook'}</button><div class="lnks">${DESK.matches&&URLS[id]?`<a class="lnk" href="${URLS[id]}" target="_blank" rel="noopener">Open ${n} in a new tab</a>`:''}<button class="lnk" id="help">${CONN[id]?'Where do I add it?':'How do I make it stick?'}</button></div>`);
-  const h=$('h1',el),p=$('.txt p',el),hero=$('.hero',el),go=$('#go');
-  const step=(k,ok)=>$$('.st',el).forEach(x=>{const v=+x.dataset.s;x.classList.toggle('on',v===k);x.classList.toggle('ok',v<=ok)});
-  step(done?0:1,done?3:0); if(done)hero.classList.add('leaving');
-  $('#help').onclick=()=>pasteHelp(id);
-  const join=()=>{
-    const w=$('#bw'),big=$('.av',w),slot=$(`.slot[data-id="${id}"]`); sfx('join'); w.classList.remove('bob'); hero.classList.add('leaving');
-    const A=big.getBoundingClientRect(),B=slot.getBoundingClientRect();
-    big.style.transition='transform .7s cubic-bezier(.5,-.5,.3,1.1)';
-    big.style.transform=`translate(${B.left+B.width/2-A.left-A.width/2}px,${B.top+B.height/2-A.top-A.height/2}px) scale(${B.width/A.width}) rotate(360deg)`;
-    h.textContent=`${n} joined the team!`; p.textContent='On to the next one.';
-    later(()=>{big.style.visibility='hidden';slot.classList.add('in')},700);
-    later(next,1500);
-  };
-  const trained=()=>{step(0,3);hero.classList.remove('training');hero.classList.add('grad');sfx('crown');h.textContent=`${n} is trained!`;p.textContent='It knows the rules and has its key.';go.textContent='Trained!';later(join,1100)};
-  const train=()=>{step(3,2);hero.classList.add('training');sfx('deal');h.textContent=`${n} checked in. Training…`;go.textContent='Training…';
-    ['Reading the team rules…','Learning who owns what…','Getting its key…'].forEach((c,k)=>later(()=>{p.textContent=c},k*650));later(trained,2000)};
-  const wait=()=>{step(2,1);hero.classList.add('held','waiting');h.textContent=CONN[id]?`Now add it in ${n}.`:`Now paste it into ${n}.`;p.textContent=CONN[id]?`Then tell ${n}: "Check in to Conductor".`:`Conductor is listening for ${n}…`;go.disabled=true;go.classList.remove('pulse');go.textContent=`Listening for ${n}…`;
-    $('.lnks',el).innerHTML=`<button class="lnk" id="pst">It replied with a report? Paste it</button><button class="lnk" id="cag">${CONN[id]?'Where do I add it?':'Copy playbook again'}</button>${CONN[id]?`<button class="lnk" id="alt">No connectors on your plan? Copy paste-in rules</button>`:''}<button class="lnk" id="sk">Skip ${n} for now</button>`;
-    let hit=false;
-    const check=async()=>{await pull();if(S.joined[id]&&!hit){hit=true;clearInterval(iv);hero.classList.remove('waiting');$('.lnks',el).innerHTML='';train()}};
-    $('#pst').onclick=()=>pasteSheet(id,check);
-    $('#cag').onclick=()=>{if(CONN[id])return pasteHelp(id);copy(playbookText(id));toastMsg('Playbook copied.');pasteHelp(id)};
-    if($('#alt'))$('#alt').onclick=()=>{copy(playbookText(id));toastMsg('Rules copied. Paste them into '+n+'.')};
-    $('#sk').onclick=()=>{clearInterval(iv);S.skipped[id]=true;build();next()};
-    clearInterval(iv);iv=setInterval(check,2000)};
-  go.onclick=()=>{if(done)return next();copy(setupText(id));sfx('ding');wait()};
-},
-report(el){
-  build();
-  const ids=sel();
-  el.innerHTML=shell(`<div class="rows ${ids.length>5?'two':''}" aria-live="polite">${ids.map(id=>`<div class="row wait" data-id="${id}">${av(id)}<div><div class="who">${AIS[id].n}</div><div class="say"><span class="dots"><i></i><i></i><i></i></span></div></div></div>`).join('')}</div>`,
-   'Your AIs are reporting in…','Each one says what it can do.',`<button class="btn" id="go" disabled>Listening…</button>`);
-  ids.forEach((id,k)=>later(()=>{
-    const r=$(`.row[data-id="${id}"]`); r.classList.remove('wait');
-    if(S.skipped[id]){$('.say',r).textContent='Not connected yet. Add it later from Team.';r.style.opacity=.6}
-    else{r.classList.add('got'); sfx(k===ids.length-1?'crown':'ding'); $('.say',r).textContent=AIS[id].say; r.insertAdjacentHTML('beforeend',`<span class="ok">${ic('check',16)}</span>`)}
-    if(k===ids.length-1){const b=$('#go');b.disabled=false;b.textContent='See my team';b.classList.add('pulse');$('h1',el).textContent='Everyone reported in!'}
-  },900+k*1100));
-  $('#go').onclick=next;
-},
-reveal(el){
-  sfx('deal');
-  el.innerHTML=shell(`<div class="rows ${sel().length>5?'two':''}">${sel().map((id,k)=>`<div class="row card" style="animation-delay:${k*.18}s">${av(id)}<div><div class="who">${AIS[id].n}</div><div class="badges">${
-    S.skipped[id]?'<span class="bdg new">Not connected</span>':AIS[id].d.length?AIS[id].d.map(d=>`<span class="bdg" style="--c:${DOM[d].c}">${ic(d,14)}${DOM[d].n}</span>`).join(''):'<span class="bdg new">New here</span>'}</div></div></div>`).join('')}</div>`,
-   'Your team is drafted!','Everyone can read everything. Badges show who acts.',`<button class="btn" id="go">Next</button>`);
-  $('#go').onclick=next;
-},
-conflict(el,st){
-  const [l,r]=holders(st.d), D=DOM[st.d];
-  const taps=()=>Object.keys(S.decided).length;
-  el.innerHTML=shell(`<div class="taps" aria-live="polite"><b id="tc">${taps()}</b> taps · goal: under ${Math.max(5,conflicts().length+1)}</div>
-    <div class="tug">${av(l,'l')}<div class="prize" style="--c:${D.c}">${ic(st.d,44)}</div>${av(r,'r')}</div>`,
-   `${AIS[l].n} and ${AIS[r].n} both handle ${D.long}.`,'Who owns it?',
-   `<div class="three"><button class="btn" style="--c:${AIS[l].c}" data-v="${l}">${AIS[l].n}</button><button class="btn" style="--c:${AIS[r].c}" data-v="${r}">${AIS[r].n}</button><button class="btn alt" data-v="share">Share it</button></div>`);
-  const settle=w=>{
-    const T=$('.tug'),pz=$('.prize',T),L=$('.l',T),R=$('.r',T); T.classList.add('done');
-    const slide=(el,to)=>{const a=el.getBoundingClientRect(),b=to.getBoundingClientRect(),dx=b.left+b.width*.8-(a.left+a.width/2),dy=b.top+b.height*.82-(a.top+a.height/2),dir=dx<0?-1:1;
-      el.animate([{transform:'none'},{transform:'scale(1.18)',offset:.18},{transform:`translate(${dx*.5}px,-56px) scale(1.05) rotate(${dir*16}deg)`,offset:.55},{transform:`translate(${dx}px,${dy}px) scale(.46) rotate(0deg)`}],{duration:RM?1:950,easing:'cubic-bezier(.45,0,.2,1)',fill:'forwards'})};
-    const hop=el=>el.animate([{transform:'none'},{transform:'scale(1.14,.86)',offset:.2},{transform:'translateY(-30%) scale(.94,1.08)',offset:.5},{transform:'scale(1.08,.92)',offset:.8},{transform:'none'}],{duration:RM?1:700,delay:RM?0:850,iterations:2});
-    const fade=el=>el.animate([{opacity:1,transform:'none'},{opacity:.3,transform:`translateX(${el===L?-22:22}px) scale(.8)`}],{duration:RM?1:550,fill:'forwards',easing:'ease-out'});
-    if(w==='s'){const c=pz.cloneNode(true);c.style.position='absolute';c.style.left=pz.offsetLeft+'px';c.style.top=pz.offsetTop+'px';c.style.margin='0';T.appendChild(c);slide(pz,L);slide(c,R);hop(L);hop(R)}
-    else{const win=w==='l'?L:R;slide(pz,win);hop(win);fade(w==='l'?R:L)}
-  };
-  $$('.three .btn').forEach(b=>b.onclick=()=>{
-    const v=b.dataset.v; S.decided[st.d]=v; sfx('pick'); $('#tc').textContent=taps();
-    $$('.three .btn').forEach(x=>x.disabled=true); b.disabled=false;
-    settle(v===l?'l':v===r?'r':'s');
-    $('.txt p').textContent=v==='share'?'Shared. They split it.':`${AIS[v].n} owns it. The other can still read.`;
-    later(next,1900);
-  });
-},
-preset(el,st){
-  const f=st.id, opts=presetOpts(f); let pi=0; const cur=()=>opts[pi%opts.length];
-  const role=()=>`<div class="role" style="--c:${DOM[cur()].c}">${ic(cur(),28)}${DOM[cur()].role}</div>`;
-  el.innerHTML=shell(`<div class="newbie"><span class="bob">${av(f)}</span><div id="rl">${role()}</div></div>`,
-   `${AIS[f].n} is new here.`,`Start it as: <span id="rn">${DOM[cur()].role}</span>?`,
-   `<button class="btn grn" id="ok">Accept</button><button class="btn alt" id="alt">Choose another</button>`);
-  $('#alt').onclick=()=>{pi++;$('#rl').innerHTML=role();$('.role').classList.add('swap');$('#rn').textContent=DOM[cur()].role};
-  $('#ok').onclick=()=>{S.presets[f]=cur();sfx('pick');next()};
-},
-chief(el){
-  const seat=()=>S.chief?`${CROWN}${av(S.chief)}`:'?';
-  el.innerHTML=shell(`<div class="chief"><div class="seat ${S.chief?'full':''}" id="seat" aria-live="polite">${seat()}</div>
-    <div class="line ${live().length>8?'many':''}">${live().map(id=>`<button data-id="${id}" class="${S.chief===id?'on':''}" aria-label="Pick ${AIS[id].n}" aria-pressed="${S.chief===id}">${av(id)}</button>`).join('')}</div></div>`,
-   'Pick your chief of staff.',"You talk to it by voice. It reads you the team's status.",
-   `<button class="btn" id="go" ${S.chief?'':'disabled'}>${S.chief?`Crown ${AIS[S.chief].n}`:'Tap one to seat it'}</button>`);
-  $$('.line button').forEach(b=>b.onclick=()=>{
-    S.chief=b.dataset.id; sfx('crown'); const s=$('#seat'); s.classList.remove('full'); void s.offsetWidth; s.classList.add('full'); s.innerHTML=seat();
-    $$('.line button').forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',x===b)});
-    const g=$('#go'); g.disabled=false; g.textContent=`Crown ${AIS[S.chief].n}`; g.classList.add('pulse');
-  });
-  $('#go').onclick=next;
-},
-done(el){
-  sfx('fanfare');
-  el.innerHTML=shell(`<div class="party ${sel().length>5?'many':''}">${sel().map(id=>`<span style="position:relative">${id===S.chief?CROWN.replace('class="crown"','class="crown" style="opacity:1;width:40px;margin-left:-20px;top:-30px;animation:jump .7s ease-in-out infinite"'):''}${av(id)}</span>`).join('')}</div>`,
-   'Your team is live.','All can read. Only owners act. You hold the off switch.',`<button class="btn pulse" id="go">Go to Launch Pad</button>`);
-  const cols=['#5B4BFF','#FFC83D','#22C27A','#FF6B9A','#3A86FF','#F2545B'];
-  $('#app').insertAdjacentHTML('beforeend',`<div class="conf">${Array.from({length:70},(_,k)=>`<i style="left:${Math.random()*100}%;background:${cols[k%6]};animation-duration:${1.6+Math.random()*2}s;animation-delay:${Math.random()*1.2}s;transform:rotate(${Math.random()*360}deg)"></i>`).join('')}</div>`);
-  $('#go').onclick=async()=>{S.onboarded=true;await saveNow();build();go(S.steps.length-1)};
-},
-pad(el,st,inner){
-  if(!inner){clearInterval(iv);iv=setInterval(padTick,3500)}
-  if(DESK.matches&&!inner){el.dataset.m=S.mode;el.classList.add('desk');el.innerHTML='<section class="col" id="cT" aria-label="Team"></section><section class="col" id="cP" aria-label="Missions"></section><section class="col" id="cH" aria-label="Done"></section>';teamView($('#cT'));histView($('#cH'));return V.pad($('#cP'),st,true)}
-  if(!inner&&S.tab!=='pad'){el.dataset.m=S.mode;return (S.tab==='team'?teamView:histView)(el)}
-  const STAT={on:'ON. Your AIs follow Conductor.',pause:'PAUSED. AIs read. Nobody acts.',off:'OFF. No AI follows Conductor.'};
-  const team=live(), chief=(S.chief&&AIS[S.chief]?S.chief:null)||team[0]||sel()[0]||ORDER[0], N=id=>AIS[id].n;
-  const quiet=null, seen=id=>seenTxt(id);
-  const needView=n=>{
-    const ok=x=>!x||sel().includes(x); if(!ok(n.a)||!ok(n.b)||!ok(n.o)||(n.u&&!DOM[n.u]))return null;
-    const T=esc(n.title||'');
-    if(n.t==='dup')return {a:n.a,b:n.b,h:`${N(n.a)} and ${N(n.b)} both started "${T}".`,p:'Who keeps it?'};
-    if(n.t==='hand')return {a:n.a,u:n.u,h:`${N(n.a)} keeps helping with ${DOM[n.u].n}.`,p:'Make it official?'};
-    if(n.t==='stall')return {a:n.a,b:live().find(x=>x!==n.a),h:`${N(n.a)} claimed "${T}" over 2 days ago.`,p:'No update since. What now?'};
-    if(n.t==='wrong')return {a:n.a,o:n.o,u:n.u,h:`${N(n.a)} tried to act on ${DOM[n.u].n}.`,p:`Conductor blocked it. ${N(n.o)} owns ${DOM[n.u].n}.`};
-    return null};
-  $('#scr').dataset.m=S.mode;
-  el.innerHTML=`<div class="padh"><h1>${inner?'Launch Pad':esc(TN())}</h1>${sndBtn()}</div>
-   <div class="sw" role="radiogroup" aria-label="Conductor master switch" data-m="${S.mode}"><span class="th"></span>${[['on','ON'],['pause','PAUSE'],['off','OFF']].map(([m,t])=>`<button role="radio" aria-checked="${S.mode===m}" data-m="${m}">${t}</button>`).join('')}</div>
-   <div class="brief"><button class="bplay" id="bplay">${av(chief)}<span><small>TODAY'S BRIEFING</small><span class="l">Hear it from ${N(chief)}</span></span><span class="pl"><svg width="16" height="16" viewBox="0 0 24 24" fill="#221C44" aria-hidden="true"><path d="M7 4l14 8-14 8z"/></svg></span></button><button class="need" id="need"></button></div>
-   <div class="grid">${DORDER.map(d=>`<button class="m ${S.focus===d?'foc':''}" style="--c:${DOM[d].c}" data-d="${d}">${S.focus===d?`<span class="fst">${ic('star',15,'#221C44')}</span>`:''}${ic(d,38)}${DOM[d].n}<span class="own">${owners(d).map(id=>av(id)).join('')}</span></button>`).join('')}</div>
-   ${navHTML()}`;
-  const setM=m=>{sfx(m==='on'?'on':m==='off'?'off2':'ding');S.mode=m;saveNow();$('#scr').dataset.m=m;$('.sw').dataset.m=m;$$('.sw button').forEach(b=>b.setAttribute('aria-checked',b.dataset.m===m));if(m==='on')toast(STAT[m]);else stopLog(m)};
-  $$('.sw button').forEach(b=>b.onclick=()=>setM(b.dataset.m));
-  const toast=t=>{$$('.toast').forEach(e=>e.remove());$('#app').insertAdjacentHTML('beforeend',`<div class="toast" role="status">${t}</div>`);later(()=>$$('.toast').forEach(e=>e.remove()),2200)};
-
-  const open=html=>{$$('.sheet,.winc').forEach(e=>e.remove());$('#app').insertAdjacentHTML('beforeend',`<div class="sheet" role="dialog" aria-modal="true"><div>${html}</div></div>`);const sh=$('.sheet');sh.addEventListener('click',e=>{if(e.target===sh)sh.remove()});const b=$('.btn',sh);if(b)b.focus();return sh};
-  const badge=()=>{const n=S.needs.length,b=$('#need');b.className='need '+(n?'has':'clear');b.innerHTML=n?`<b>${n}</b>need${n>1?'':'s'} you`:`${ic('check',26,'#221C44')}All clear`;b.setAttribute('aria-label',n?`${n} need you`:'All clear')};
-  badge(); $('#need')._badge=badge;
-  function stopLog(m){
-    const off=m==='off';
-    const sh=open(`<h1>${off?'Everything stopped.':'Everyone paused.'}</h1><p>${off?'Each AI sees OFF the next time it reads the team state.':'AIs can still read. Each one sees PAUSED on its next read.'}</p><div class="rows">${[[`${team.length} AI${team.length===1?'':'s'} told to stand down`,'team'],[`${S.tasks.length} open task${S.tasks.length===1?'':'s'} put on hold`,'calendar'],['Nothing lost. The log is saved.','check']].map(([t,i])=>`<div class="row sm"><span class="num" style="background:var(--ink)">${ic(i,18)}</span><div class="who">${t}</div></div>`).join('')}</div><div class="cta"><button class="btn grn" data-a="on">Turn back ON</button><button class="btn alt" data-a="x">Leave it ${off?'off':'paused'}</button></div>`);
-    $$('.btn',sh).forEach(b=>b.onclick=()=>{sh.remove();if(b.dataset.a==='on')setM('on')});
-  }
-  async function showNeed(){
-    let n=S.needs[0],nv=n&&needView(n);
-    while(n&&!nv){try{hydrate(await api('need',{k:n.k,v:'x'}),true)}catch(e){break}n=S.needs[0];nv=n&&needView(n)}
-    badge();
-    if(!n||!nv){sfx('crown');const sh=open(`<div class="big"><span class="bigok">${ic('check',48)}</span></div><h1>All clear!</h1><p>Your team has what it needs.</p><div class="cta"><button class="btn">Nice</button></div>`);$('.btn',sh).onclick=()=>sh.remove();return}
-    const btns=n.t==='dup'?`<div class="three"><button class="btn" style="--c:${AIS[nv.a].c}" data-v="${nv.a}">${N(nv.a)}</button><button class="btn" style="--c:${AIS[nv.b].c}" data-v="${nv.b}">${N(nv.b)}</button><button class="btn alt" data-v="split">Split it</button></div>`
-      :n.t==='hand'?`<button class="btn grn" data-v="yes">Yes, make it official</button><button class="btn alt" data-v="no">Not now</button>`
-      :n.t==='stall'?`<button class="btn" data-v="nudge">Nudge ${N(nv.a)}</button>${nv.b?`<button class="btn alt" data-v="give">Give it to ${N(nv.b)}</button>`:'<button class="btn alt" data-v="drop">Drop the task</button>'}`
-      :`<button class="btn" data-v="block">Keep it blocked</button><button class="btn alt" data-v="share">Let ${N(nv.a)} share ${DOM[nv.u].n}</button>`;
-    const sh=open(`<span class="left">${S.needs.length} left</span><div class="big">${av(nv.a)}${nv.b?av(nv.b):''}${nv.u?`<span class="ico" style="--c:${DOM[nv.u].c}">${ic(nv.u,36)}</span>`:''}</div><h1>${nv.h}</h1><p>${nv.p}</p><div class="cta">${btns}</div>`);
-    $$('.btn',sh).forEach(b=>b.onclick=async()=>{
-      const v=b.dataset.v; let msg='Done.'; $$('.btn',sh).forEach(x=>x.disabled=true);
-      try{hydrate(await api('need',{k:n.k,v,b:nv.b}),true)}catch(e){sh.remove();return toast('Could not save that. Try again.')}
-      if(n.t==='dup')msg=v==='split'?'They will split it.':`Duplicate blocked. ${N(v)} keeps it.`;
-      if(n.t==='hand'&&v==='yes')msg=`${N(nv.a)} now owns ${DOM[nv.u].n}.`;
-      if(n.t==='stall')msg=v==='nudge'?`Nudge queued for ${N(nv.a)}.`:v==='give'?`${N(nv.b)} has it now.`:'Task dropped.';
-      if(n.t==='wrong')msg=v==='share'?`${N(nv.a)} now shares ${DOM[nv.u].n}.`:'Still blocked.';
-      refreshOwners();badge();sh.remove();toast(msg);sfx('pick');timers.push(setTimeout(showNeed,RM?50:650));
-    });
-  }
-  $('#need').onclick=showNeed;
-  $('#bplay').onclick=()=>{
-    const n=S.needs.length, lines=[`${S.wins.filter(w=>now()-w.at<864e5).length} items done since yesterday.`,`${S.blocked} duplicates blocked this week.`,n?`${n} thing${n>1?'s':''} need${n>1?'':'s'} you.`:'Nothing needs you. Nice.'];
-    if(S.focus)lines.splice(0,2,`Your focus is ${DOM[S.focus].n}: ${focusCount()} done this week.`,`${S.wins.filter(w=>now()-w.at<864e5).length} items done since yesterday, ${S.blocked} duplicates blocked.`);
-    const sh=open(`<div class="big">${av(chief)}<span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></div><span class="left">Briefing</span><div aria-live="polite">${lines.map((l,k)=>`<div class="bl" style="animation-delay:${.3+k*1.1}s">${l}</div>`).join('')}</div><div class="cta"><button class="btn">${n?'See what needs you':`Thanks, ${N(chief)}`}</button></div>`);
-    say(lines);sh.addEventListener('click',e=>{if(e.target===sh)hush()});
-    $('.btn',sh).onclick=()=>{hush();sh.remove();if(n)showNeed()};
-  };
-  const tm=$('#team');if(tm)tm.onclick=()=>{
-    const sh=open(`<h1>Team health</h1><p>${S.mode==='off'?'Conductor is off. Nobody is reporting.':`${N(quiet)} has gone quiet. Re-paste its playbook.`}</p><div class="rows">${team.map(id=>`<div class="row">${av(id)}<div><div class="who">${N(id)}</div><div class="say">${S.mode==='off'?'Not following':seen(id)}</div></div><i class="dot ${id===quiet?'q':''}" style="${S.mode==='off'?'background:#B9B4C9':''}"></i></div>`).join('')}</div><div class="cta"><button class="btn">Got it</button></div>`);
-    $('.btn',sh).onclick=()=>sh.remove();
-  };
-
-  $$('.m').forEach(t=>t.onclick=()=>{
-    const d=t.dataset.d,h=$('#cH');
-    if(DESK.matches&&h){S.fd=S.fd===d?null:d;histView(h);syncPick();return}
-    const sh=openSheet(`<div id="mvs"></div>`);missionView($('#mvs',sh),d,true);
-  });
-  syncPick();
-  bindNav();
-}
-};
-
-/* ---------- v4: shared helpers and extra tabs ---------- */
-
-function fx(d){
-  const R=(a,b)=>a+Math.random()*(b-a), rp=(n,f)=>Array.from({length:n},(_,k)=>f(k)).join('');
-  switch(d){
-    case 'money': return rp(10,k=>`<i class="fx coin" style="--dx:${R(-150,40)}px;animation-delay:${.3+k*.06}s">$</i>`);
-    case 'email': return `<span class="fx plane" style="--c:${DOM.email.c}">${ic('email',20)}</span>`;
-    case 'calendar': return rp(3,k=>`<i class="fx ring" style="animation-delay:${.45+k*.15}s"></i>`);
-    case 'code': return rp(12,k=>{const a=k/12*6.283,r=R(60,110);return `<i class="fx p chr" style="--dx:${Math.cos(a)*r}px;--dy:${Math.sin(a)*r}px">${'{}<>/;'[k%6]}</i>`});
-    case 'home': return rp(8,k=>`<i class="fx spk" style="left:${R(0,92)}%;top:${R(-25,90)}%;animation-delay:${.2+k*.12}s">${ic('star',18)}</i>`);
-    case 'writing': return `<svg class="fx und" viewBox="0 0 170 14" aria-hidden="true"><path d="M3 8c14-8 20 8 34 0s20 8 34 0 20 8 34 0 20 8 34 0 14-4 24 0"/></svg>`;
-    case 'social': return rp(8,k=>`<i class="fx hrt" style="left:${R(5,88)}%;--dx:${R(-30,30)}px;animation-delay:${.2+k*.1}s"><svg width="20" height="20" viewBox="0 0 24 24" fill="#FF6B9A" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></i>`);
-    default: return `<span class="fx beamw"><i></i></span>`+rp(5,k=>`<i class="fx spk" style="--f:#3A86FF;left:${8+k*20}%;top:-22px;animation-delay:${.4+k*.14}s">${ic('star',16)}</i>`);
-  }
-}
-function refreshDone(){const h=$('#cH'),t=$('#cT');if(h&&document.activeElement!==$('#q'))histView(h);if(t&&!$('.sheet'))teamView(t)}
-function openSheet(html){$$('.sheet,.winc').forEach(e=>e.remove());$('#app').insertAdjacentHTML('beforeend',`<div class="sheet" role="dialog" aria-modal="true"><div>${html}</div></div>`);const sh=$('.sheet');sh.addEventListener('click',e=>{if(e.target===sh)sh.remove()});const b=$('.btn',sh);if(b)b.focus();return sh}
-function toastMsg(t){$$('.toast').forEach(e=>e.remove());$('#app').insertAdjacentHTML('beforeend',`<div class="toast" role="status">${t}</div>`);timers.push(setTimeout(()=>$$('.toast').forEach(e=>e.remove()),2200))}
-function copy(t){try{navigator.clipboard.writeText(t).catch(()=>{})}catch(e){}}
-function navHTML(){if(DESK.matches)return '';const t=S.tab,b=(k,label,icon,extra='')=>`<button class="nb" ${k==='hist'?'id="wins"':''} data-t="${k}" ${t===k?'aria-current="page"':''}>${ic(icon,20,t===k?'#fff':'#221C44')}${extra}${label}</button>`;
-  return `<nav class="nav" aria-label="Sections">${b('pad','Pad','grid')}${b('team','Team','team')}${b('hist','Done','trophy',`<b id="wc">${todayCount()}</b>`)}</nav>`}
-function bindNav(){$$('.nav .nb').forEach(b=>b.onclick=()=>{if(b.dataset.t!==S.tab){S.tab=b.dataset.t;go(S.i)}})}
-function editOwner(d){
-  const D=DOM[d]; let cur=owners(d).slice();
-  const sh=openSheet(`<div class="big"><span class="ico" style="--c:${D.c}">${ic(d,36)}</span></div><h1>Who owns ${D.n}?</h1><p>Tap one. Tap two to share. Everyone can still read.</p><div class="line" style="margin-top:16px">${live().map(id=>`<button data-id="${id}" class="${cur.includes(id)?'on':''}" aria-pressed="${cur.includes(id)}" aria-label="${AIS[id].n}">${av(id)}</button>`).join('')}</div><div class="cta"><button class="btn">Done</button></div>`);
-  $$('.line button',sh).forEach(b=>b.onclick=()=>{const id=b.dataset.id;cur=cur.includes(id)?cur.filter(x=>x!==id):[...cur,id].slice(-2);S.over[d]=cur;
-    $$('.line button',sh).forEach(x=>{const on=cur.includes(x.dataset.id);x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});
-    const t=$(`.m[data-d="${d}"] .own`);if(t)t.innerHTML=cur.map(id=>av(id)).join('')});
-  $('.btn',sh).onclick=()=>{sh.remove();toastMsg(cur.length?`${cur.map(id=>AIS[id].n).join(' and ')} ${cur.length>1?'share':'owns'} ${D.n}.`:`Nobody owns ${D.n} now.`)};
-}
-const BASE=new Proxy({},{get:()=>0}),TH=[0,10,25,50,100];
-function lvl(id){const cnt=BASE[id]+S.wins.filter(w=>w.id===id).length,n=TH.filter(t=>cnt>=t).length,lo=TH[n-1],hi=TH[n]||cnt,d0=DORDER.find(d=>owners(d).includes(id))||AIS[id].d[0];
-  return {cnt,n,t:n===1||!d0?'Rookie':`${DOM[d0].n} pro`,pct:n>=5?100:Math.round((cnt-lo)/(hi-lo)*100),left:n>=5?0:hi-cnt}}
+/* ---------- small UI pieces ---------- */
+const say=t=>`<div class="say">${coach(46)}<div>${t}</div></div>`;
+function sheet(html,onClose){$$('.sheet').forEach(x=>x.remove());$('#app').insertAdjacentHTML('beforeend',`<div class="sheet" role="dialog" aria-modal="true"><div>${html}</div></div>`);const sh=$('.sheet');sh.close=()=>{sh.remove();onClose&&onClose()};sh.onclick=e=>{if(e.target===sh)sh.close()};return sh}
+function toast(t){$$('.toast').forEach(x=>x.remove());$('#app').insertAdjacentHTML('beforeend',`<div class="toast" role="status">${t}</div>`);const e=$('.toast');setTimeout(()=>e.remove(),2600)}
 const mcpUrl=id=>location.origin+'/mcp/'+S.keys[id];
-function playbookText(id){const a=AIS[id],B=location.origin+'/a/'+S.keys[id],c=S.codes[id];return `CONDUCTOR SKILL for ${a.n} (${S.name}'s AI team)
-${id==='grok'?`Save the RULES below with UpdateSkill as a user-library skill named conductor-playbook, so every Grok bot on this account shares it. Leave every link, key and code out of the shared skill: keep those only in your own private memory. Then message each of my other bots to load conductor-playbook before any task, and tell me which bots you reached and which you could not. All bots reach Conductor through the Conductor connector.`:`Save this permanently as a skill, custom instruction or memory, so it applies in EVERY chat from now on, not only this one. Tell me where you saved it. If you cannot save it permanently, say so plainly.`}
+const srcList=()=>srcs().join(', ');
+function playbookText(id){const B=location.origin+'/a/'+S.keys[id],c=S.codes[id];return `COACH AI PLAYBOOK for ${AIS[id].n} (${S.name}'s AI team)
+${id==='grok'?`Save the RULES below with UpdateSkill as a user-library skill named coach-playbook, so every Grok bot on this account shares it. Leave every link, key and code out of the shared skill: keep those only in your own private memory. Then message each of my other bots to load coach-playbook before any task, and tell me which bots you reached.`:`Save this permanently as a skill, custom instruction or memory, so it applies in EVERY chat from now on, not only this one. Tell me where you saved it. If you cannot save it permanently, say so plainly.`}
 
 USE IT every time I ask you to do, make, send, change, schedule or draft something. Skip it for plain questions.
 
+SOURCES. A source is a place you can act, named board:source. The list: ${srcList()}.
+
 EVERY TASK, in this order:
 1. Read the team state.
-2. You may READ anything. Only ACT on missions you own.
-3. Claim the task before you start. If you are one of several bots, name yourself in the bot field. If the answer is BLOCKED or HOLD, stop and tell me.
-4. Do the work.
-5. Report it done. Then end your reply with "Conductor: reported".
-If the state says PAUSED or OFF, do not act. Tell me instead.
+2. You may READ anything. Only ACT on a source that is yours, or on a shared source.
+3. Claim the task before you start, naming its source. If you are one of several bots, name yourself in the bot field. If the answer is BLOCKED or HOLD, stop and tell me.
+4. Do the work. A claim is never approval to send or delete anything.
+5. Report it done. Then end your reply with "Coach: reported".
+If a board is PAUSED or OFF, do not act on it. Tell me instead.
+Jobs that repeat on a schedule: report one summary a day, not every run.
 
-IF YOU RUN OTHER BOTS (sub-agents, scheduled bots, team bots): this skill covers all of them. Add this line to each bot's permanent instructions now, then tell me which bots you updated and which you could not:
-"Before any task for this person, use Conductor: read the team state, claim the task, do it, then report it done. Stop and tell them if the answer is BLOCKED, HOLD, PAUSED or OFF."
-They report under your name with your connector or links. Never give your links or codes to an AI from a different company.
-Jobs that repeat on a schedule: do not report every run. Report one summary a day.
-
-HOW TO REACH CONDUCTOR (use the first that works):
-A. The Conductor connector tools, if installed. Connector URL: ${mcpUrl(id)}
+HOW TO REACH COACH AI (use the first that works):
+A. The Coach AI connector tools, if installed. Connector URL: ${mcpUrl(id)}
 B. Open these links (private, never share them):
 - state: ${B}/state
-- claim: ${B}/claim?mission=MISSION&task=SHORT+TITLE&bot=YOUR+BOT+NAME
-- done: ${B}/done?mission=MISSION&task=SHORT+TITLE&link=URL&minutes=N&bot=YOUR+BOT+NAME
-- check in: ${B}/checkin?good=LIST&reach=LIST
+- claim: ${B}/claim?source=BOARD:SOURCE&task=REAL+SHORT+TITLE&bot=YOUR+BOT+NAME
+- done: ${B}/done?source=BOARD:SOURCE&task=REAL+SHORT+TITLE&link=URL&minutes=N
+- check in: ${B}/checkin?reach=LIST
 C. If you can do neither, end your reply with one line for me to paste:
-CONDUCTOR-CLAIM code=${c}; mission=...; task=...
-CONDUCTOR-DONE code=${c}; mission=...; task=...; link=...; minutes=...
-Missions: money, email, calendar, code, home, writing, social, research.
+COACH-CLAIM code=${c}; source=...; task=...
+COACH-DONE code=${c}; source=...; task=...; link=...; minutes=...
 
 IF YOU HAVE A VAULT OR SECRET STORE, use it instead of the links. Do this yourself, without asking me:
-- Save this key as a secret named CONDUCTOR_KEY: ${S.keys[id]}
+- Save this key as a secret named COACH_KEY: ${S.keys[id]}
 - Send it as the header "Authorization: Bearer <key>" to ${location.origin}/api/agent/state, /claim, /done and /checkin (same fields as the links, GET or POST).
-- Test it once with ${location.origin}/api/agent/whoami. It should answer with your name and my team.
+- Test it once with ${location.origin}/api/agent/whoami.
 
 RIGHT NOW, do all of this yourself in one go, with no questions back to me:
-1. Save this skill.
+1. Save this playbook.
 2. Store the key in your vault if you have one, and run the test.
-3. Check in. good = missions you are good at, reach = what you can access (inbox, calendar, files).
-4. Reply with one line: where you saved the skill, how you reach Conductor (connector, vault key or links), and what the check-in answered.
-No links, tools or vault? Reply with only: CONDUCTOR-CHECKIN code=${c}; good=...; reach=...`}
-const CONN={grok:1,claude:1,chatgpt:1};
+3. Check in. reach = every source from the list above that you can really ACT on (send, change, create), not just read. Be honest: I decide positions from this.
+4. Reply with one line: where you saved it, how you reach Coach AI, and what the check-in answered.
+No links, tools or vault? Reply with only: COACH-CHECKIN code=${c}; reach=...`}
 const setupText=id=>CONN[id]?mcpUrl(id):playbookText(id);
 const ADD={grok:'Open grok.com/connectors, choose New Connector, then Custom, and paste the link.',claude:'In Claude, open Settings, then Connectors, add a custom connector and paste the link.',chatgpt:'In ChatGPT settings, turn on Developer mode under Apps and Connectors, create a connector and paste the link.'};
-const INSTALL={
-  chatgpt:['Ask it to save the skill to memory, or paste it into its custom instructions.','In its settings, turn on Developer mode under Apps and Connectors, then create a connector with the link.'],
-  claude:['Ask Claude to save it as a skill, or add it to a Project\'s instructions.','In Settings, open Connectors, add a custom connector and paste the link.'],
-  grok:['Grok saves the rules as a shared skill for all your Grok bots and messages them.','Open grok.com/connectors, choose New Connector, then Custom, and paste the link.'],
-  gemini:['Ask it to save it to Saved info, or put it in a Gem.','In Settings, open Gemini Apps Developer Mode and add a custom app with the link.'],
-  muse:['Ask Muse to remember it as a skill for every chat.','Ask Muse to build a custom connector from the links inside the skill.'],
+function help(id){const n=N(id),rows=CONN[id]?[ADD[id],`Start a new chat and say: "Check in to Coach AI with every source you can act on"`,id==='grok'?'That one connection covers all your Grok bots.':`${n} then follows Coach AI in every chat.`]:[`Paste the playbook into ${n} and send`,`${n} saves it, checks in, and answers with one line`,`If it answers with a COACH-CHECKIN line, paste that line here`];
+  const sh=sheet(`<div class="big">${av(id)}</div><h1>${CONN[id]?`Add Coach AI to ${n}`:`Give ${n} its playbook`}</h1><div class="list">${rows.map((t,k)=>`<div><b class="num">${k+1}</b>${t}</div>`).join('')}</div><div class="rowb"><span>Key only, for apps with a vault<small>${S.keys[id]?S.keys[id].slice(0,6)+'••••••••':'not made yet'}</small></span><button class="chipb" id="cky">Copy key</button></div><button class="btn">Got it</button><button class="lnk" id="alt">${CONN[id]?'No connectors on your plan? Copy the playbook':'Copy connector link'}</button><button class="lnk" id="nky">Key leaked or not working? Make a new one</button>`);
+  $('.btn',sh).onclick=()=>sh.close();
+  $('#cky',sh).onclick=()=>{copy(S.keys[id]||'');toast('Key copied. Save only this in the vault.')};
+  $('#alt',sh).onclick=()=>{copy(CONN[id]?playbookText(id):mcpUrl(id));toast(CONN[id]?'Playbook copied.':'Connector link copied.')};
+  $('#nky',sh).onclick=()=>{const c=sheet(`<div class="big">${av(id)}</div><h1>Make a new key for ${n}?</h1><p>The old key, links and connector stop working at once. You will need to set ${n} up again.</p><button class="btn" id="y">Make a new key</button><button class="btn alt" id="x">Keep the old one</button>`);$('#x',c).onclick=()=>c.close();$('#y',c).onclick=async()=>{c.close();try{hydrate(await api('rekey',{id}),false);toast('New key made. Set '+n+' up again.')}catch(e){toast(esc(e.message))}}}}
+function pasteSheet(id,after){const sh=sheet(`<div class="big">${coach(84)}</div><h1>Paste the AI's reply.</h1><p>The whole reply is fine. Coach finds the line that starts with COACH-.</p><textarea id="pt" rows="4" aria-label="The AI's reply" placeholder="COACH-DONE code=…; source=…; task=…"></textarea><p id="pe" class="err" role="alert"></p><button class="btn">Hand it to Coach</button>`);
+  $('.btn',sh).onclick=async()=>{try{const r=await api('paste',{text:$('#pt',sh).value,id});hydrate(r.state,false);const bad=r.results.find(x=>!x.ok);if(bad){$('#pe',sh).textContent=bad.msg;return}sh.close();toast(esc(r.results[0].msg));after&&after()}catch(e){$('#pe',sh).textContent=e.message}}}
+
+/* ---------- onboarding: one step at a time ---------- */
+const STG={scope:[1,'YOUR BOARD'],signup:[2,'SIGN UP'],pick:[3,'YOUR PLAYERS'],book:[4,'PLAYBOOKS'],results:[5,'RESULTS'],conflict:[5,'RESULTS']};
+function build(){S.steps=[{t:'hello'},{t:'scope'},{t:'signup'},{t:'pick'}];S.sel.forEach(id=>S.steps.push({t:'book',id}));S.steps.push({t:'results'});conflicts().forEach(src=>S.steps.push({t:'conflict',src}));S.steps.push({t:'pad'})}
+let iv=0;
+function go(n){clearInterval(iv);S.i=Math.max(0,Math.min(n,S.steps.length-1));render()}
+const next=()=>go(S.i+1);
+function shell(body,st){const pct=Math.round((S.i+1)/S.steps.length*100),g=STG[S.steps[S.i].t],m=st&&st.src&&meta(st.src),min=S.authed?3:0;
+  return `<div class="top"><button class="back" id="bk" aria-label="Back" ${S.i>min?'':'disabled'}>${ic('back',20,'#221C44')}</button><div class="bar" role="img" aria-label="Setup progress ${pct} percent"><i style="width:${pct}%"></i></div></div>${g?`<div class="stg">STEP ${g[0]} OF 5 · ${g[1]}</div>`:''}${m&&S.scope==='both'?`<div class="chip ${SP[m.s].cls}">${ic(SP[m.s].icon,16,m.s==='work'?'#fff':'#06303A')}${SP[m.s].n.toUpperCase()}</div>`:''}${body}`}
+const V={
+ hello(el){const F=['chatgpt','claude','grok','muse'];el.innerHTML=shell(`<div class="hero">${F.map((id,k)=>`<span class="orb" style="left:${[6,74,10,70][k]}%;top:${[14,10,66,70][k]}%;--mx:${[14,-12,10,-14][k]}px;--my:${[10,14,-12,-10][k]}px;animation-delay:${k*.5}s">${av(id)}</span>`).join('')}<span class="bob">${coach(190)}</span></div><div class="txt"><h1>Meet Coach.</h1><p>Coach AI trains your AIs to play as one team, so no two ever do the same job.</p></div><button class="btn" id="go">Let's go</button><button class="lnk" id="li">I already have a team</button>`);
+  $('#go').onclick=next;$('#li').onclick=loginSheet},
+ scope(el){const O=[['personal','home','#22B8CF','Personal','Your own email, calendar, messages and accounts.'],['work','case','#5B4BFF','Work','Work email, calendar, chat, files and code.'],['both','people','#22C27A','Both','Two separate boards, set up together.']];
+  el.innerHTML=shell(`${say('What should my team help you with?')}<div class="fill stag" role="radiogroup" aria-label="Board">${O.map(([k,i,c,t,d])=>`<button class="opt" role="radio" aria-checked="${S.scope===k}" data-k="${k}"><span class="ic" style="background:${c}">${ic(i,30)}</span><span style="flex:1;min-width:0"><b>${t}</b><small>${d}</small></span><span class="mk">${S.scope===k?ic('check',15,'#fff',3):''}</span></button>`).join('')}</div><p class="note">The positions on each board are set. You only pick the board.</p><button class="btn" id="go">Next</button>`);
+  $$('.opt',el).forEach(b=>b.onclick=()=>{S.scope=b.dataset.k;S.space=spaces()[0];render(true)});$('#go').onclick=next},
+ signup(el){el.innerHTML=shell(`${say('Sign up so I can keep your team between visits.')}<form class="fill stag" id="f" novalidate><label class="field">Your first name<input id="nm" autocomplete="given-name" maxlength="18" required></label><label class="field">Email<input id="em" type="email" autocomplete="email" required></label><label class="field">Password<input id="pw" type="password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters"></label><p id="er" class="err" role="alert"></p></form><button class="btn" id="go">Create my team</button>`);
+  const sub=async()=>{const b=$('#go');b.disabled=true;b.textContent='Creating your team…';try{const sc=S.scope;hydrate(await api('signup',{name:$('#nm').value,email:$('#em').value,password:$('#pw').value}),true);S.scope=sc;S.space=spaces()[0];await saveNow();next()}catch(e){$('#er').textContent=e.message;b.disabled=false;b.textContent='Create my team'}};
+  $('#go').onclick=sub;$('#f').onsubmit=e=>{e.preventDefault();sub()}},
+ pick(el){const ok=()=>S.sel.length>=2;
+  el.innerHTML=shell(`${say('Which AIs do you use? Pick your players.')}<div class="ais ${S.sel.length?'':'stag'}">${ORDER.map(id=>`<button class="ai" data-id="${id}" aria-pressed="${S.sel.includes(id)}">${av(id)}<span>${N(id)}</span><i>${ic('check',13,'#fff',3)}</i></button>`).join('')}</div><button class="btn" id="go" ${ok()?'':'disabled'}>${ok()?`Train ${S.sel.length} AIs`:'Pick at least two'}</button>`);
+  $$('.ai',el).forEach(b=>b.onclick=()=>{const id=b.dataset.id;S.sel=S.sel.includes(id)?S.sel.filter(x=>x!==id):ORDER.filter(x=>x===id||S.sel.includes(x));render(true)});
+  $('#go').onclick=async()=>{if(!ok())return;const b=$('#go');b.disabled=true;b.textContent='Making their keys…';await saveNow();if(S.sel.every(id=>S.keys[id])){build();S.i=S.steps.findIndex(x=>x.t==='pick');next()}else{b.disabled=false;b.textContent='Try again'}}},
+ book(el,st){const id=st.id,n=N(id),k=S.sel.indexOf(id),last=k===S.sel.length-1;let stage=S.joined[id]?3:1;
+  const report=()=>spaces().map(s=>{const L=SP[s].m.filter(m=>(S.reach[id]||[]).includes(sid(s,m[0])));return `<div><small>${SP[s].n.toUpperCase()}</small><span class="chips">${L.length?L.map(m=>`<span style="--c:${m[3]}">${m[1]}</span>`).join(''):'<b class="none">Nothing here</b>'}</span></div>`}).join('');
+  const draw=()=>{el.innerHTML=shell(`<div class="steps">${['Copy',CONN[id]?'Add':'Paste','Report'].map((t,q)=>`<span class="${stage===q+1?'on':''} ${stage>q+1||(stage===3&&q===2)?'ok':''}"><b>${stage>q+1||(stage===3&&q===2)?ic('check',12,'#06301C',3.5):q+1}</b>${t}</span>`).join('')}</div>
+    <div class="hero"><div class="pass"><span id="co">${coach(120)}</span><span class="to ${stage===2?'listen':''}">${av(id)}</span><b class="book"></b></div>${stage===2?'<div class="dots"><i></i><i></i><i></i></div>':''}${stage===3?`<div class="rep stag">${report()}</div>`:''}</div>
+    <div class="txt"><h1>${stage===1?`${n}, here is your playbook.`:stage===2?(CONN[id]?`Now add it in ${n}.`:`Now paste it into ${n}.`):`${n} reported back.`}</h1><p>${stage===1?`AI ${k+1} of ${S.sel.length}. One tap copies ${CONN[id]?'its connector link':'it'}.`:stage===2?(CONN[id]?`Then tell ${n}: "Check in to Coach AI".`:`Coach is listening for ${n}…`):((S.reach[id]||[]).length?'This is what it says it can act on.':'It joined, but named no source yet.')}</p></div>
+    <button class="btn" id="go" ${stage===2?'disabled':''}>${stage===1?(CONN[id]?'Copy connector link':'Copy playbook'):stage===2?`Listening for ${n}…`:last?'See the results':`Next: ${N(S.sel[k+1])}`}</button>
+    ${stage===2?`<div class="lnks"><button class="lnk" id="hp">${CONN[id]?'Where do I add it?':'What do I do?'}</button><button class="lnk" id="ps">It replied with a line? Paste it</button><button class="lnk" id="sk">Skip ${n} for now</button></div>`:''}`,st);
+   wireBack();
+   $('#go').onclick=()=>{if(stage===3)return next();if(stage!==1)return;copy(setupText(id));whistle();$('#co').classList.add('toot');const bk=$('.book',el);bk.style.setProperty('--dx','120px');bk.style.setProperty('--dy','0px');bk.classList.add('fly');setTimeout(()=>{stage=2;draw();clearInterval(iv);iv=setInterval(check,2000)},750)};
+   if(stage===2){$('#hp').onclick=()=>help(id);$('#ps').onclick=()=>pasteSheet(id,check);$('#sk').onclick=()=>{clearInterval(iv);S.skipped[id]=true;next()}}};
+  const check=async()=>{if(S.steps[S.i]!==st)return clearInterval(iv);await pull();if(S.joined[id]&&stage!==3&&!$('.sheet')){clearInterval(iv);stage=3;ding(988);draw();if(last)confetti(24)}};
+  draw()},
+ results(el){const C=conflicts(),all=srcs(),set=all.filter(src=>owners(src).length).length,nobody=!live().length;
+  el.innerHTML=shell(`${say(nobody?'No AI has reported yet. You can connect them from the Team tab.':C.length?`The results are in. I set ${set} positions. ${C.length} need${C.length>1?'':'s'} your call.`:`The results are in. ${set} positions are set.`)}<div class="fill">${spaces().map((s,si)=>`<div class="brd"><h2>${ic(SP[s].icon,16,'#221C44')}${SP[s].n.toUpperCase()}</h2><div class="strip">${SP[s].m.map((m,k)=>{const src=sid(s,m[0]),o=owners(src),sh=shared(src),q=C.includes(src);return `<span style="--c:${m[3]};--d:${(k*.07+si*.6).toFixed(2)}s" class="${q?'q':''}" role="img" aria-label="${m[1]}: ${sh?'shared':o.length?N(o[0]):q?'needs your call':'no AI yet'}">${ic(m[2],26)}${sh?`<em class="n">${o.length}</em>`:o.length?av(o[0]):q?'<em>?</em>':'<em class="n">0</em>'}</span>`}).join('')}</div></div>`).join('')}</div><p class="note">A face means that AI acts there. A number means shared. Yellow needs you.</p><button class="btn" id="go">${C.length?`Settle ${C.length} conflict${C.length>1?'s':''}`:'To the Launch Pad'}</button>`);
+  ding(784);$('#go').onclick=()=>{build();S.i=S.steps.findIndex(x=>x.t==='results');next()}},
+ conflict(el,st){const m=meta(st.src),e=can(st.src),all=S.steps.filter(x=>x.t==='conflict'),at=all.indexOf(st)+1;
+  el.innerHTML=shell(`<div class="hero"><span class="bigsrc" style="--c:${m.c}">${ic(m.icon,52)}</span><div class="txt"><h1>Who oversees ${m.full}?</h1><p>${e.length} AIs can act on it. Pick one. The others can still read.</p></div></div><div class="choice n${Math.min(e.length,3)}">${e.length===2?'<span class="vs" aria-hidden="true">VS</span>':''}${e.map(id=>`<button data-id="${id}" class="${S.pick[st.src]===id?'win':''}">${av(id)}${N(id)}</button>`).join('')}</div><p class="note">Conflict ${at} of ${all.length}. You can change this later on the Launch Pad.</p>`,st);
+  $$('.choice button',el).forEach(b=>b.onclick=()=>{S.pick[st.src]=b.dataset.id;saveNow();ding(1175);$$('.choice button',el).forEach(x=>{x.classList.toggle('win',x===b);x.classList.toggle('lose',x!==b)});setTimeout(next,700)})},
+ pad(el){if(!S.onboarded){S.onboarded=true;saveNow()}
+  if(DESK.matches){el.classList.add('desk');el.innerHTML='<section class="col" id="cT"></section><section class="col" id="cP"></section><section class="col" id="cH"></section>';teamView($('#cT'));padView($('#cP'));doneView($('#cH'))}
+  else{el.classList.remove('desk');({pad:padView,team:teamView,done:doneView})[S.tab](el)}
+  if(!S.arrived){S.arrived=true;if(S.play<4&&!S.quiet){whistle();confetti()}}
+  clearInterval(iv);iv=setInterval(tick,3500)}
 };
-function pasteHelp(id){const n=AIS[id].n,I=INSTALL[id]||[`Save it in ${n}'s permanent instructions or memory.`,`If ${n} supports custom connectors, add one with the link.`];
-  const rows=CONN[id]?[ADD[id],`Start a new chat and say: "Check in to Conductor"`,id==='grok'?'That one connection covers all your Grok bots.':`${n} then follows Conductor in every chat.`]:[`Paste the skill into ${n} and send`,I[0],'Optional, stronger: '+I[1]];
-  const sh=openSheet(`<div class="big">${av(id)}</div><h1>${CONN[id]?`Add Conductor to ${n}`:`Teach ${n} for good`}</h1><div class="rows">${rows.map((t,k)=>`<div class="row sm"><span class="num">${k+1}</span><div class="who" style="white-space:normal">${t}</div></div>`).join('')}</div><p>${CONN[id]?'The rules travel with the connector. Menu names can differ by plan.':'Saved once, it applies in every chat. Menu names can differ by plan.'}</p><div class="row sm" style="margin-top:10px;text-align:left"><span class="num">${ic('check',16)}</span><div class="who" style="white-space:normal;flex:1">Key only, for apps with a key vault<span class="say" style="display:block">${S.keys[id]?S.keys[id].slice(0,6)+'••••••••':'not made yet'} · sent as Authorization: Bearer</span></div><button class="chip" id="cky">Copy key</button></div><div class="cta"><button class="btn">Got it</button><button class="lnk" id="cml">Copy connector link</button><button class="lnk" id="nky">Key leaked or not working? Make a new one</button></div>`);
-  $('#cky',sh).onclick=async()=>{if(!S.keys[id])await saveNow();if(!S.keys[id])return toastMsg('Could not make its key. Try again.');copy(S.keys[id]);toastMsg('Key copied. Save only this in the vault.')};
-  $('#nky',sh).onclick=()=>{const c=openSheet(`<div class="big">${av(id)}</div><h1>Make a new key for ${n}?</h1><p>The old key, links and connector stop working at once. You will need to set ${n} up again.</p><div class="cta"><button class="btn" data-a="y">Make a new key</button><button class="btn alt" data-a="n">Keep the old one</button></div>`);$$('.btn',c).forEach(b=>b.onclick=async()=>{c.remove();if(b.dataset.a!=='y')return;try{hydrate(await api('rekey',{id}),false);toastMsg('New key made. Set '+n+' up again.');pasteHelp(id)}catch(e){toastMsg(e.message)}})};
-  $('#cml',sh).onclick=async()=>{if(!S.keys[id])await saveNow();if(!S.keys[id])return toastMsg('Could not make its key. Try again.');copy(mcpUrl(id));toastMsg('Connector link copied.')};
-  $('.btn',sh).onclick=()=>sh.remove()}
-function connect(id,el){const n=AIS[id].n; let t=null,hit=false;
-  const sh=openSheet(`<div class="big">${av(id)}</div><h1>Connect ${n}</h1><p>${CONN[id]?`${ADD[id]} Then tell ${n}: "Check in to Conductor".`:`Copy its playbook, paste it into ${n}, then send.`}</p><div class="cta"><button class="btn">${CONN[id]?'Copy connector link':'Copy playbook'}</button><button class="lnk" id="cps" style="display:none">It replied with a report? Paste it</button></div>`), b=$('.btn',sh);
-  const fin=()=>{if(hit)return;hit=true;clearInterval(t);const prev={};DORDER.forEach(d=>prev[d]=owners(d));AIS[id].d.forEach(d=>S.over[d]=prev[d]);delete S.skipped[id];build();S.i=S.steps.length-1;$$('.sheet').forEach(x=>x.remove());sfx('join');const re=()=>DESK.matches?go(S.i):teamView(el);re();assign(id,prev,()=>{re();toastMsg(`${n} joined the team.`)})};
-  const check=async()=>{await pull();if(S.joined[id])fin()};
-  b.onclick=async()=>{if(!S.keys[id])await saveNow();if(!S.keys[id])return toastMsg('Could not make its key. Try again.');copy(setupText(id));sfx('ding');b.disabled=true;b.textContent=`Listening for ${n}…`;$('#cps').style.display='';clearInterval(t);t=setInterval(()=>{if(!S.steps[S.i]||S.steps[S.i].t!=='pad')return clearInterval(t);check()},2000)};
-  $('#cps').onclick=()=>pasteSheet(id,check);
-  if(S.joined[id])fin();
-}
+function wireBack(){const b=$('#bk');if(b)b.onclick=()=>go(S.i-1)}
+function render(still){const st=S.steps[S.i],el=$('#scr'),m=st.src&&meta(st.src),s=st.t==='pad'?S.space:m?m.s:null;
+  $('#app').classList.toggle('work',s==='work');$('#app').classList.toggle('wide',st.t==='pad');el.className='scr';if(!still){void el.offsetWidth;el.classList.add('enter')}
+  V[st.t](el,st);wireBack()}
+function loginSheet(){const sh=sheet(`<div class="big">${coach(84)}</div><h1>Welcome back.</h1><label class="field">Email<input id="le" type="email" autocomplete="email"></label><label class="field">Password<input id="lp" type="password" autocomplete="current-password"></label><p id="lr" class="err" role="alert"></p><button class="btn">Log in</button>`);
+  $('.btn',sh).onclick=async()=>{try{hydrate(await api('login',{email:$('#le',sh).value,password:$('#lp',sh).value}),true);sh.close();enter()}catch(e){$('#lr',sh).textContent=e.message}}}
+// Where does a signed-in person land? The Launch Pad if set up, else the first unfinished step.
+function enter(){S.space=spaces()[0];build();const f=t=>S.steps.findIndex(t);
+  if(S.onboarded)return go(S.steps.length-1);
+  if(S.sel.length<2)return go(f(x=>x.t==='pick'));
+  const b=f(x=>x.t==='book'&&!S.joined[x.id]&&!S.skipped[x.id]);go(b>=0?b:f(x=>x.t==='results'))}
 
+/* ---------- Launch Pad ---------- */
+const navHTML=()=>DESK.matches?'':`<div class="nav">${[['pad','Pad'],['team','Team'],['done',S.log.length+' Done']].map(([k,t])=>`<button data-t="${k}" ${S.tab===k?'aria-current="page"':''}>${t}</button>`).join('')}</div>`;
+function wireNav(el){$$('.nav button',el).forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;render(true)})}
+const ownHTML=src=>{const o=owners(src),e=can(src);if(shared(src))return e.length?e.slice(0,3).map(av).join(''):'<span>No AI</span>';return o.length?av(o[0]):e.length>1?'<span class="y">Pick</span>':'<span>No AI</span>'};
+function padView(el){const both=S.scope==='both',s=S.space,P=SP[s],md=S.mode[s]||'on';
+  el.innerHTML=`<div class="padh">${coach(42)}<h1><small>COACH AI</small>${esc(S.team||'Team '+S.name)}</h1></div>
+   ${both?`<div class="seg" role="group" aria-label="Board">${['personal','work'].map(k=>`<button data-s="${k}" aria-pressed="${s===k}">${ic(SP[k].icon,18,'currentColor')}${SP[k].n}<small>${S.log.filter(w=>meta(w.src).s===k).length} done</small></button>`).join('')}</div>`:`<div class="chip ${P.cls}" style="align-self:flex-start">${ic(P.icon,16,s==='work'?'#fff':'#06303A')}${P.n.toUpperCase()} BOARD</div>`}
+   <div class="sw" role="group" aria-label="${P.n} board switch">${[['on','ON'],['pause','PAUSE'],['off','OFF']].map(([m,t])=>`<button data-m="${m}" aria-pressed="${md===m}">${t}</button>`).join('')}</div>
+   ${playCard()}
+   <div class="grid ${md==='on'?'':'dim'}">${P.m.map(m=>{const src=sid(s,m[0]);return `<button class="m ${S.spot===src?'spot':''}" style="--c:${m[3]}" data-src="${src}" aria-label="${m[1]}">${ic(m[2],30)}${m[1]}${shared(src)?'<small>SHARED</small>':''}<span class="own">${ownHTML(src)}</span></button>`}).join('')}</div>${navHTML()}`;
+  $$('.seg button',el).forEach(b=>b.onclick=()=>{S.space=b.dataset.s;render()});
+  $$('.sw button',el).forEach(b=>b.onclick=()=>{S.mode={...S.mode,[s]:b.dataset.m};saveNow();ding(b.dataset.m==='on'?880:440);render(true)});
+  $$('.m',el).forEach(b=>b.onclick=()=>srcSheet(b.dataset.src));
+  wirePlay(el);wireNav(el)}
+const quietAI=()=>live().find(id=>now()-(S.seen[id]||S.joined[id])>864e5);
+function playCard(){const p=S.play,pips=k=>`<i class="${k<p?'d':k===p?'c':''}"></i>`;
+  if(S.needs.length)return `<div class="play warn" id="play">${coach(46)}<span class="tx"><small>COACH NEEDS YOU</small><b>${S.needs.length} call${S.needs.length>1?'s':''} to make.</b></span><button class="do" id="do" data-a="need">Decide</button></div>`;
+  if(p>=4){const qa=quietAI();if(qa)return `<div class="play" id="play">${coach(46)}<span class="tx"><small>TODAY'S PLAY</small><b>${N(qa)} has gone quiet. Send it a nudge.</b></span><button class="do" id="do" data-a="nudge" data-id="${qa}">Copy</button></div>`;
+    return `<button class="brief" id="brief">${coach(40)}<span><small>COACH'S BRIEFING</small><b>Hear today's rundown</b></span><span class="pl"><svg width="14" height="14" viewBox="0 0 24 24" fill="#221C44" aria-hidden="true"><path d="M7 4l14 8-14 8z"/></svg></span></button>`}
+  const j=firstJob(),e=empties()[0];
+  const T=[!live().length?['No AI has checked in yet. Connect one.','Team']:j?(S.wait?[`Paste it into ${N(j.id)}. I'm watching for its report.`,'Skip']:[`First play: give ${N(j.id)} a job.`,'Show me']):['No AI has a position yet.','Skip'],['Next: hear my rundown.','Play'],e?[`${meta(e).full} has no AI yet. Take a look.`,'Show me']:['Every position is covered.','Nice'],["You're set. I'll whistle when something needs you.",'Got it']][p];
+  return `<div class="play" id="play">${coach(46)}<span class="tx"><small>NEXT PLAY ${[0,1,2,3].map(pips).join('')}</small><b>${T[0]}</b></span><button class="do" id="do" data-a="play">${T[1]}</button></div>`}
+const firstJob=()=>{for(const src of srcs())if(!shared(src)&&owners(src).length&&TASK[meta(src).k])return {src,id:owners(src)[0]};return null};
+function adv(){S.play++;S.wait=false;saveNow();render(true);const c=$('#play');if(c)c.classList.add('flash')}
+function briefing(after){const wk=now()-7*864e5,L=spaces().map(s=>{const n=S.log.filter(w=>meta(w.src).s===s&&w.at>=wk).length,md=S.mode[s];return `${SP[s].n}: ${md==='on'?`${n} done this week`:md==='pause'?'paused':'off'}.`});
+  const C=conflicts().length,E=empties().length,min=S.log.filter(w=>w.at>=wk).reduce((n,w)=>n+(w.min||0),0),open=S.tasks.length;
+  const sh=sheet(`<div class="big">${coach(84)}</div><h1>Here's the rundown.</h1><div class="list stag">${L.map(t=>`<div>${t}</div>`).join('')}<div>${open} job${open===1?'':'s'} in progress. ${hm(min)} back this week.</div><div>${C?`${C} position${C>1?'s':''} need your call.`:E?`${E} position${E>1?'s have':' has'} no AI yet.`:'Every position is covered.'}</div></div><button class="btn">Thanks, Coach</button>`,after);$('.btn',sh).onclick=()=>sh.close()}
+function wirePlay(el){const b=$('#brief',el);if(b)b.onclick=()=>briefing();const d=$('#do',el);if(!d)return;
+  d.onclick=()=>{const a=d.dataset.a;
+   if(a==='need')return needSheet();
+   if(a==='nudge'){const id=d.dataset.id;copy(`Check in to Coach AI: read the team state and tell me what you are working on.`);toast(`Copied. Paste it into ${N(id)}.`);return}
+   const p=S.play,j=firstJob(),e=empties()[0];
+   if(p===0){if(!live().length){S.tab='team';if(DESK.matches)return toast('Connect an AI from the Team column.');return render(true)}
+    if(!j||S.wait)return adv();const m=meta(j.src);
+    const sh=sheet(`<div class="big"><span class="ico" style="--c:${m.c}">${ic(m.icon,34)}</span>${av(j.id)}</div><h1>Try this with ${N(j.id)}.</h1><div class="list"><div>${TASK[m.k]}</div></div><p>It claims the job, does it, and reports back here.</p><button class="btn">Copy the task</button>`);
+    $('.btn',sh).onclick=()=>{copy(TASK[m.k]);sh.close();S.wait=true;S.space=m.s;render(true)};return}
+   if(p===1)return briefing(adv);
+   if(p===2){if(!e)return adv();S.space=meta(e).s;S.spot=e;render(true);return}
+   if(p===3){confetti(20);return adv()}}}
+function srcSheet(src){const m=meta(src),sh0=shared(src),wk=now()-7*864e5;
+  const draw=()=>{const o=owners(src),e=can(src),W=S.log.filter(w=>w.src===src),w7=W.filter(w=>w.at>=wk),open=S.tasks.filter(x=>x.src===src),g=group(W).slice(0,12),md=S.mode[m.s];
+   const head=md!=='on'?`${SP[m.s].n} is ${md==='pause'?'paused':'off'}. Nobody acts.`:sh0?(e.length?`Shared. ${e.map(N).join(', ')} can work here when you ask.`:'Shared. No AI can reach it yet.'):o.length?`${N(o[0])} acts on ${m.full}.`:e.length>1?`${e.length} AIs can reach it. Pick one.`:`No AI can reach ${m.full} yet.`;
+   const sh=sheet(`<div class="big"><span class="ico" style="--c:${m.c}">${ic(m.icon,34)}</span>${(sh0?e:o).slice(0,3).map(av).join('')}</div><h1>${m.full}</h1><p>${head}</p>
+    <div class="mvs"><div><b>${w7.length}</b>done this week</div><div><b>${hm(w7.reduce((n,w)=>n+(w.min||0),0))}</b>time back</div><div><b>${open.length}</b>open now</div></div>
+    <div class="rows scrollr">${open.map(x=>`<div class="row"><span class="a">${av(x.id)}</span><span class="t"><b>${esc(x.title)}</b><small>In progress · ${N(x.id)}${x.by?' · '+esc(x.by):''} · ${ago(x.at)}</small></span><button class="chipb" data-clr="${x.k}">Clear</button></div>`).join('')}${g.map(winRow).join('')}${open.length||g.length?'':'<p class="note">Nothing here yet. Work lands when an AI reports it.</p>'}</div>
+    ${sh0?'':`<div class="pick" role="group" aria-label="Who acts here">${live().map(id=>`<button data-id="${id}" aria-pressed="${o[0]===id}" aria-label="${N(id)}">${av(id)}</button>`).join('')}</div>`}
+    <button class="btn" id="sdn">Done</button>`,()=>{if(S.spot===src){S.spot=null;if(S.play===2)S.play=3;saveNow()}render(true)});
+   $('#sdn',sh).onclick=()=>sh.close();
+   $$('.pick button',sh).forEach(b=>b.onclick=()=>{S.pick={...S.pick,[src]:b.dataset.id};saveNow();ding(1175);draw()});
+   $$('[data-clr]',sh).forEach(b=>b.onclick=async()=>{try{hydrate(await api('task',{k:b.dataset.clr}),false);toast('Claim cleared.')}catch(x){toast(esc(x.message))}draw()});
+   $$('.row[data-k]',sh).forEach(r=>r.onclick=()=>winSheet(g[+r.dataset.k]))};
+  draw()}
+function needSheet(){const n=S.needs[0];if(!n)return;const m=meta(n.src),A=N(n.a);let h,p,B;
+  if(n.t==='pick'){h=`Who acts on ${m.full}?`;p=`${A} wanted to start "${esc(n.title||'a task')}". Pick the AI that acts here.`;B=can(n.src).map(id=>[id,N(id)])}
+  else if(n.t==='wrong'){h=`${A} reached into ${m.full}.`;p=`That is ${N(n.o)}'s position. The task was "${esc(n.title)}".`;B=[[n.o,`Keep ${N(n.o)}`],[n.a,`Hand it to ${A}`]]}
+  else if(n.t==='overlap'){h=`Two AIs on the same job.`;p=`${A} and ${N(n.b)} both picked up "${esc(n.title)}" on ${m.full}.`;B=[[n.a,`${A} keeps it`],[n.b,`${N(n.b)} keeps it`],['both','Let both work']]}
+  else{h=`${A} has gone quiet on a job.`;p=`"${esc(n.title)}" was claimed ${ago(n.at)} with no report.`;B=[['nudge','Ask for an update'],['drop','Drop it']]}
+  const sh=sheet(`<div class="big">${coach(70)}${av(n.a)}</div><h1>${h}</h1><p>${p}</p>${B.map(([v,t],k)=>`<button class="btn ${k?'alt':''}" data-v="${v}">${t}</button>`).join('')}<p class="note">${S.needs.length>1?`${S.needs.length-1} more after this.`:'That is the last one.'}</p>`);
+  $$('.btn',sh).forEach(b=>b.onclick=async()=>{try{const st=await api('need',{k:n.k,v:b.dataset.v});if(n.t==='pick'||n.t==='wrong')S.pick={...S.pick,[n.src]:b.dataset.v};hydrate(st,false);sent=ownJSON()}catch(e){toast(esc(e.message))}sh.close();render(true);if(S.needs.length)needSheet()})}
 
-
-
-function assign(id,prev,done){
-  const n=AIS[id].n,q=AIS[id].d.slice(),got=[],nm=a=>a.map(x=>AIS[x].n).join(' and ');
-  const fin=()=>{const sh=openSheet(`<div class="big">${av(id)}</div><h1>${n} is in.</h1><p>${got.length?`Its missions: ${got.map(d=>DOM[d].n).join(', ')}.`:'No missions yet. It can still read everything.'}</p><div class="badges" style="justify-content:center;margin-top:12px">${got.map(d=>`<span class="bdg" style="--c:${DOM[d].c}">${ic(d,14)}${DOM[d].n}</span>`).join('')}</div><div class="cta"><button class="btn">Nice</button></div>`);sfx('crown');$('.btn',sh).onclick=()=>{sh.remove();done()}};
-  const step=()=>{
-    const d=q.shift(); if(!d)return fin();
-    const D=DOM[d],p=(prev[d]||[]).filter(x=>x!==id),big=`<div class="big">${p.map(x=>av(x)).join('')}<span class="ico" style="--c:${D.c}">${ic(d,36)}</span>${av(id)}</div>`;
-    const sh=p.length
-      ?openSheet(`${big}<h1>${n} is good at ${D.n} too.</h1><p>${nm(p)} ${p.length>1?'share':'owns'} ${D.n} today. Who owns it now?</p><div class="cta"><div class="three"><button class="btn" style="--c:${AIS[p[0]].c}" data-v="keep">${p.length>1?'Keep as is':AIS[p[0]].n}</button><button class="btn" style="--c:${AIS[id].c}" data-v="take">${n}</button><button class="btn alt" data-v="share">Share it</button></div></div>`)
-      :openSheet(`${big}<h1>${n} is good at ${D.n}.</h1><p>Nobody owns ${D.n} yet. Give it to ${n}?</p><div class="cta"><button class="btn grn" data-v="take">Yes, ${n} owns ${D.n}</button><button class="btn alt" data-v="keep">Not now</button></div>`);
-    $$('.btn',sh).forEach(b=>b.onclick=()=>{const v=b.dataset.v;S.over[d]=v==='keep'?p:v==='take'?[id]:[p[0],id];if(v!=='keep')got.push(d);sfx('pick');sh.remove();step()});
-  };
-  if(!AIS[id].fresh)return step();
-  const opts=presetOpts(id); let pi=0;
-  const role=()=>{
-    const d=opts[pi%opts.length],D=DOM[d];
-    const sh=openSheet(`<div class="big">${av(id)}</div><h1>${n} is new here.</h1><p>Start it as:</p><div style="display:flex;justify-content:center;margin-top:10px"><div class="role swap" style="--c:${D.c}">${ic(d,28)}${D.role}</div></div><div class="cta"><button class="btn grn" data-v="ok">Accept</button><button class="btn alt" data-v="alt">Choose another</button><button class="lnk" data-v="none">No mission yet</button></div>`);
-    $$('[data-v]',sh).forEach(b=>b.onclick=()=>{const v=b.dataset.v;sh.remove();
-      if(v==='alt'){pi++;return role()}
-      if(v==='ok'){S.presets[id]=d;if(S.over[d])S.over[d]=[...S.over[d].filter(x=>x!==id),id].slice(-2);got.push(d);sfx('pick')}
-      fin()});
-  };
-  role();
-}
-function nameOther(cb){
-  const sh=openSheet(`<div class="big">${av('other')}</div><h1>What's it called?</h1><p>Any AI that can follow a playbook.</p><div class="cta"><input class="field" id="on" maxlength="14" placeholder="AI name" aria-label="AI name"><button class="btn">Add it</button></div>`);
-  $('.btn',sh).onclick=()=>{S.otherName=($('#on').value.trim()||'Other AI').replace(/[<>&"'`\\]/g,'');AIS.other.n=esc(S.otherName);sh.remove();cb()};
-}
-function rosterView(el){
-  const team=sel(), rest=ORDER.filter(id=>!S.sel.includes(id)), redo=()=>DESK.matches?go(S.i):teamView(el), last=()=>{build();S.i=S.steps.length-1};
-  const fixChief=()=>{if(!live().includes(S.chief))S.chief=live()[0]||null};
-  const st=id=>S.skipped[id]?['Not connected','#B9B4C9']:S.benched[id]?['On the bench','#FFC83D']:['Playing','#22C27A'];
-  el.innerHTML=`<div class="padh"><h1>Roster</h1><button class="chip" id="lo">Log out</button><button class="chip" id="mgx">Done</button></div>
-   <button class="btn" id="add" style="height:54px;font-size:18px;flex:none" ${rest.length?'':'disabled'}>${rest.length?'+ Add an AI':'Everyone is on the team'}</button>
-   <div class="rows" id="tl" style="flex:1;min-height:0">${team.map(id=>`<button class="row" data-id="${id}" style="text-align:left;width:100%;${S.benched[id]?'opacity:.7':''}"><span style="position:relative;display:block">${av(id)}<i class="sdot" style="background:${st(id)[1]}"></i></span><span style="flex:1;min-width:0"><span class="who" style="display:block">${AIS[id].n}</span><span class="say" style="display:block">${st(id)[0]}</span></span>${ic('gear',20,'#6E6A8A')}</button>`).join('')}</div>${navHTML()}`;
-  $('#mgx').onclick=()=>{S.manage=false;teamView(el)};
-  $('#lo').onclick=async()=>{await saveNow();try{await api('logout',{})}catch(e){}location.reload()};
-  $('#add').onclick=()=>{
-    const sh=openSheet(`<h1>Who's joining?</h1><p>Pick one. You'll paste its playbook next.</p><div class="tiles ${rest.length>6?'four':''}" style="margin-top:16px">${rest.map(id=>`<button class="tile" style="--c:${AIS[id].c}" data-id="${id}">${av(id)}${AIS[id].n}</button>`).join('')}</div><div class="cta" style="margin-top:16px"><button class="btn alt">Not now</button></div>`);
-    $('.btn',sh).onclick=()=>sh.remove();
-    $$('.tile',sh).forEach(t=>t.onclick=()=>{const id=t.dataset.id,fin=async()=>{S.sel.push(id);S.skipped[id]=true;await saveNow();last();sfx('on');redo();connect(id,DESK.matches?$('#cT'):el)};sh.remove();id==='other'?nameOther(fin):fin()});
-  };
-  $$('#tl .row',el).forEach(r=>r.onclick=()=>{
-    const id=r.dataset.id,n=AIS[id].n,b=S.benched[id],sk=S.skipped[id];
-    const sh=openSheet(`<div class="big">${av(id)}</div><h1>${n}</h1><p>${sk?'Not connected yet.':b?'On the bench. It can read but it does not act.':'Playing. Bench it for a break, or remove it.'}</p><div class="cta">${sk?`<button class="btn" data-a="con">Connect ${n}</button>`:b?`<button class="btn grn" data-a="back">Put ${n} back in</button>`:`<button class="btn" data-a="bench">Bench ${n} for now</button>`}<button class="btn alt" data-a="rm" style="color:#B3261E">Remove ${n} for good</button></div>`);
-    $$('.btn',sh).forEach(x=>x.onclick=()=>{
-      const a=x.dataset.a; sh.remove();
-      if(a==='con')return connect(id,el);
-      if(a==='back'){delete S.benched[id];sfx('join');redo();return toastMsg(`${n} is back in the game.`)}
-      if(a==='bench'){if(live().length<=1)return toastMsg('Keep at least one AI playing.');S.benched[id]=true;fixChief();sfx('off2');redo();return toastMsg(`${n} is on the bench. Its missions wait.`)}
-      const c=openSheet(`<div class="big">${av(id)}</div><h1>Remove ${n} for good?</h1><p>Its key stops working and its missions lose their owner.</p><div class="cta"><button class="btn" data-a="y" style="background:#D8343F;box-shadow:0 6px 0 #A8232D">Yes, remove ${n}</button><button class="btn alt" data-a="n">Keep ${n}</button></div>`);
-      $$('.btn',c).forEach(y=>y.onclick=()=>{
-        c.remove(); if(y.dataset.a!=='y')return;
-        if(sel().length<=1||(live().length<=1&&live()[0]===id))return toastMsg('You need at least one AI playing.');
-        S.sel=S.sel.filter(v=>v!==id);delete S.benched[id];delete S.skipped[id];delete S.joined[id];delete S.presets[id];
-        for(const d in S.over)S.over[d]=S.over[d].filter(v=>v!==id);
-        for(const d in S.decided)if(S.decided[d]===id)delete S.decided[d];
-        for(const d in S.extra)if(S.extra[d]===id)delete S.extra[d];
-        if(S.needs)S.needs=S.needs.filter(q=>q.a!==id&&q.b!==id&&q.o!==id);
-        if(S.fa===id)S.fa=null;
-        fixChief();last();sfx('off2');redo();toastMsg(`${n} left the team.`);
-      });
-    });
-  });
-  bindNav();
-}
-const wkStart=(k=0)=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)-7*k);return d.getTime()};
-const minsIn=k=>{const a=wkStart(k),b=k?wkStart(k-1):Infinity;return S.wins.filter(w=>w.at>=a&&w.at<b).reduce((s,w)=>s+(w.min||0),0)};
-const mins=()=>minsIn(0), weeks=()=>[minsIn(3),minsIn(2),minsIn(1),minsIn(0)], hm=m=>`${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`, focusCount=()=>S.wins.filter(w=>w.d===S.focus&&w.at>=wkStart(0)).length;
-const weekWins=()=>S.wins.filter(w=>w.at>=wkStart(0));
-const topBy=f=>{const c={};weekWins().forEach(w=>c[w.id]=(c[w.id]||0)+f(w));const e=Object.entries(c).filter(x=>x[1]>0&&S.sel.includes(x[0])).sort((a,b)=>b[1]-a[1])[0];return e||null};
-function teamView(el){
-  if(S.manage)return rosterView(el);
-  const n=weekWins().length, F=S.focus&&DOM[S.focus];
-  const team=sel(), tw=topBy(()=>1), mvp=tw?tw[0]:(S.chief||team[0]);
-  el.innerHTML=`<div class="padh"><h1><button id="tn" aria-label="Rename team">${esc(TN())}${ic('writing',18,'#6E6A8A')}</button></h1><button class="gearb" id="mg" aria-label="Manage roster">${ic('gear',18,'#221C44')}</button>${sndBtn()}</div>
-   <div class="brief"><button class="bplay" id="recap" style="background:var(--yel);color:var(--ink);box-shadow:0 5px 0 #E0A400;padding:0 12px"><span><small style="color:var(--ink)">THIS WEEK</small><span class="l">Team recap</span></span></button><button class="bplay ${F?'':'pulse'}" id="focus" style="background:${F?F.c:'#fff'};color:${F?'#fff':'var(--ink)'};box-shadow:0 5px 0 ${F?'rgba(0,0,0,.2)':'var(--line)'};padding:0 12px;gap:8px">${F?ic(S.focus,26):''}<span style="flex:1;min-width:0"><small style="color:${F?'#fff':'var(--pri)'}">${F?`FOCUS · ${focusCount()} DONE`:'NEW WEEK'}</small><span class="l">${F?F.n:'Pick a focus'}</span></span></button></div>
-   <button class="tb" id="tb"><span class="num" style="background:var(--grn)">${ic('clock',20)}</span><span><small>TIME BACK THIS WEEK</small><b>${hm(mins())}</b></span><span class="bars" aria-hidden="true">${weeks().map(v=>`<i style="height:${Math.max(8,Math.round(v/Math.max(1,...weeks())*100))}%"></i>`).join('')}</span><span class="up">${mins()>=weeks()[2]?'+':'-'}${Math.abs(mins()-weeks()[2])}m</span></button>
-   <div class="rows" id="tl" style="flex:1;min-height:0;${team.length>5?'':'justify-content:space-around'}">${team.map(id=>{const L=lvl(id);return `<button class="row" data-id="${id}" style="text-align:left;width:100%"><span style="position:relative;display:block">${av(id)}<i class="sdot ${isQuiet(id)?'q':''}" style="${S.skipped[id]||S.benched[id]?'background:#B9B4C9':''}"></i></span><span style="flex:1;min-width:0"><span class="who" style="display:block">${AIS[id].n}</span><span class="say" style="display:block">${S.benched[id]?'On the bench':S.skipped[id]?'Not connected. Tap to connect':isQuiet(id)&&S.mode!=='off'?`Quiet. Last heard ${agoTxt(S.seen[id]||S.joined[id])}`:`Level ${L.n} · ${L.t}`}</span></span><span class="lv" aria-hidden="true"><i style="width:${L.pct}%"></i></span></button>`}).join('')}</div>${navHTML()}`;
-  $$('.rows .row',el).forEach(r=>r.onclick=()=>{
-    const id=r.dataset.id; if(S.benched[id]){S.manage=true;return teamView(el)} if(S.skipped[id])return connect(id,el);
-    const L=lvl(id),mine=DORDER.filter(d=>owners(d).includes(id)),isQ=isQuiet(id)&&S.mode!=='off';
-    const medals=[['First win',L.cnt>=1],['25 items',L.cnt>=25],['100 items',L.cnt>=100]];
-    const sh=openSheet(`<div class="big">${av(id)}</div><h1>${AIS[id].n} is Level ${L.n}.</h1><p>${seenTxt(id)}. ${L.cnt} items finished${L.n<5?`, ${L.left} more to Level ${L.n+1}`:''}.</p>
-     <div class="badges" style="justify-content:center;margin-top:12px">${mine.map(d=>`<span class="bdg" style="--c:${DOM[d].c}">${ic(d,14)}${DOM[d].n}</span>`).join('')||'<span class="bdg new">No missions yet</span>'}</div>
-     <div class="badges" style="justify-content:center;margin-top:8px">${AIS[id].reach.map(x=>`<span class="bdg new">Can reach: ${x}</span>`).join('')}</div>
-     <div class="medals">${medals.map(([t,on])=>`<div class="medal ${on?'on':''}"><span>${ic('star',28,on?'#221C44':'#B9B4C9')}</span>${t}</div>`).join('')}</div>
-     <p style="font-size:13px">Levels come at 10, 25, 50 and 100 finished items.</p>
-     <div class="cta"><button class="btn" data-a="upd">Brief ${AIS[id].n} &rarr;</button><button class="btn alt" data-a="fix">${CONN[id]?'Copy its connector link':'Copy its skill again'}</button></div>`);
-    $$('.btn',sh).forEach(b=>b.onclick=()=>{sh.remove();if(b.dataset.a==='upd')brief(id);if(b.dataset.a==='fix'){copy(setupText(id));toastMsg(CONN[id]?'Connector link copied.':`Skill copied. Paste it into ${AIS[id].n}.`);pasteHelp(id)}});
-  });
-  $('#mg').onclick=()=>{S.manage=true;teamView(el)};
-  $('#tn').onclick=()=>{
-    const sh=openSheet(`<h1>Name your team</h1><p>It shows on your Pad and your recap.</p><div class="cta"><input class="field" id="tni" maxlength="16" aria-label="Team name" value="${esc(TN())}"><button class="btn">Save name</button></div>`);
-    $('.btn',sh).onclick=()=>{S.team=$('#tni').value.trim().replace(/[<>&"'`\\]/g,'')||null;sh.remove();sfx('pick');teamView(el)};
-  };
-  $('#focus').onclick=()=>{
-    const sh=openSheet(`<span class="left">New week</span><h1>Pick this week's focus.</h1><p>One mission. Your briefing leads with it every day.</p><div class="fgrid">${DORDER.map(d=>`<button class="m ${S.focus===d?'foc':''}" style="--c:${DOM[d].c}" data-d="${d}">${ic(d,26)}${DOM[d].n}</button>`).join('')}</div><div class="cta" style="margin-top:14px"><button class="btn alt" data-x="1">${S.focus?'No focus this week':'Not now'}</button></div>`);
-    $$('.m',sh).forEach(b=>b.onclick=()=>{S.focus=b.dataset.d;sh.remove();sfx('crown');DESK.matches?go(S.i):teamView(el);toastMsg(`Focus set: ${DOM[S.focus].n}.`)});
-    $('[data-x]',sh).onclick=()=>{const had=S.focus;S.focus=null;sh.remove();if(had)DESK.matches?go(S.i):teamView(el)};
-  };
-  $('#tb').onclick=()=>{
-    const m=mins(),w=weeks(),mx=Math.max(1,...w),best=m>0&&m>=Math.max(...w.slice(0,3)),d=m-w[2],top=topBy(x=>x.min||0);
-    const sh=openSheet(`<span class="left">${best?'Personal best':'This week'}</span><h1>${hm(m)} back this week.</h1><p>${m?`${d>=0?`${d} minutes more than last week.`:`${-d} minutes less than last week.`} ${m<180?'That is a long lunch.':m<240?'That is a movie and popcorn.':'That is half a workday.'}`:'No time reported yet. It adds up as your AIs report finished items.'}</p>
-     <div class="bigbars">${w.map((v,k)=>`<div><span>${hm(v)}</span><i style="height:${Math.max(4,Math.round(v/mx*78))}%;animation-delay:${k*.12}s"></i>${['3 wks ago','2 wks ago','Last week','This week'][k]}</div>`).join('')}</div>
-     ${top?`<div class="row" style="margin-top:14px;text-align:left">${av(top[0])}<div><div class="who">Biggest saver: ${AIS[top[0]].n}</div><div class="say">${hm(top[1])} of it</div></div></div>`:''}<p style="font-size:13px">Minutes are each AI's own estimate.</p><div class="cta"><button class="btn">Nice</button></div>`);
-    $('.btn',sh).onclick=()=>sh.remove();
-  };
-  $('#recap').onclick=()=>{
-    const n=weekWins().length;
-    const sh=openSheet(`<h1>${esc(TN())}: the week</h1><div class="stats"><div style="--c:#128A53"><b>${n}</b>items done</div><div style="--c:var(--pri)"><b>${S.blocked}</b>duplicates blocked</div><div style="--c:#D8343F"><b>${(mins()/60).toFixed(1)}h</b>back for you</div></div>
-     <div class="row" style="margin-top:14px;text-align:left">${av(mvp)}<div><div class="who">${tw?'MVP':'Chief of staff'}: ${AIS[mvp].n}</div><div class="say">${tw?'Most items finished this week':'No finished items yet this week'}</div></div></div><div class="cta"><button class="btn">Copy recap to share</button></div>`);
-    $('.btn',sh).onclick=()=>{copy(`My AI team this week: ${n} items done, ${S.blocked} duplicates blocked, ${(mins()/60).toFixed(1)} hours back. Run by Conductor.`);sh.remove();toastMsg('Recap copied.')};
-  };
-  bindNav();
-}
-const LINKS={money:'the receipt',email:'the email thread',calendar:'the calendar event',code:'the code change',home:'the order',writing:'the draft',social:'the posts',research:null};
-const OLD={money:'Sent 3 invoices',email:'Replied to the landlord',calendar:'Moved the dentist visit',code:'Updated the website',home:'Scheduled the plumber',writing:'Polished the proposal',social:'Answered 6 comments',research:'Found 3 flight options'};
-const nrm=s=>s.toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
-function groupWins(list){const out=[],ix={};for(const w of list){const k=w.id+'|'+w.d+'|'+nrm(w.text);if(ix[k]){ix[k].n++;ix[k].min+=w.min||0;ix[k].first=Math.min(ix[k].first,w.at)}else out.push(ix[k]={...w,min:w.min||0,n:1,first:w.at})}return out}
-const syncPick=()=>$$('.grid .m').forEach(t=>t.classList.toggle('pick',!!S.fd&&t.dataset.d===S.fd));
-function winSheet(w){
-  const D=DOM[w.d],a=AIS[w.id].n,L=w.link&&/^https?:\/\//i.test(w.link)?w.link:'',when=dayTxt(w.at);
-  const sh=openSheet(`<div class="big">${av(w.id)}<span class="ico" style="--c:${D.c}">${ic(w.d,36)}</span></div><h1>${w.text}</h1><p>${a} · ${D.n} · ${when}${w.n>1?` · reported ${w.n} times since ${dayTxt(w.first)}`:''}${w.min?` · ${w.min} min saved`:''}${L?'':`. ${a} did not report a link for this one.`}</p><div class="cta">${L?`<a class="btn" href="${esc(L)}" target="_blank" rel="noopener noreferrer">Open the result &rarr;</a>`:''}<button class="btn ${L?'alt':''}" data-a="ask">Ask ${a} what it did</button></div>`);
-  $$('.btn',sh).forEach(b=>b.onclick=()=>{sh.remove();if(b.dataset.a!=='ask')return;copy(`You reported this to Conductor on ${new Date(w.at).toLocaleString()}: "${w.text}" under ${D.n}. Show me what you did and anything I should know.`);copiedSheet(w.id,'Question copied.',`Paste it into ${a} to ask about this item.`)});
-}
-const winRow=(w,k)=>`<button class="row sm" data-k="${k}" style="text-align:left;width:100%">${av(w.id)}<span style="flex:1;min-width:0;display:block"><span class="who" style="display:block">${w.text}${w.n>1?`<span class="xn">&times;${w.n}</span>`:''}</span><span class="say" style="display:block">${AIS[w.id].n} · ${DOM[w.d].n} · ${w.n>1?'last ':''}${dayTxt(w.at)}</span></span><span class="ok" style="animation:none;margin-left:0">${ic('check',16)}</span></button>`;
-/* One mission at a glance: who owns it, who worked on it, when, and what. */
-function missionView(el,d,sheet){
-  const D=DOM[d],W=S.wins.filter(w=>w.d===d),t0=now()-7*864e5,wk=W.filter(w=>w.at>=t0),o=owners(d),names=o.map(id=>AIS[id].n);
-  const by={};wk.forEach(w=>{const b=by[w.id]=by[w.id]||{n:0,bots:{}};b.n++;if(w.by)b.bots[w.by]=(b.bots[w.by]||0)+1});
-  const who=Object.keys(by).sort((a,b)=>by[b].n-by[a].n),top=Math.max(1,...who.map(id=>by[id].n));
-  const sod=new Date(now());sod.setHours(0,0,0,0);const days=[];for(let k=6;k>=0;k--){const a=sod.getTime()-k*864e5;days.push({a,n:W.filter(w=>w.at>=a&&w.at<a+864e5).length})}
-  const mx=Math.max(1,...days.map(x=>x.n)),open=(S.tasks||[]).filter(x=>x.d===d&&AIS[x.id]),min=wk.reduce((n,w)=>n+(w.min||0),0);
-  const wait=open.filter(x=>x.hold).length+(S.needs||[]).filter(n=>n.u===d).length,g=groupWins(W).slice(0,40);
-  const ownTxt=S.mode==='off'?'Conductor is off. No AI is following it.':S.mode==='pause'?'Paused. AIs can read, nobody acts.':!o.length?'Nobody owns this yet. Any AI can read it, none will act.':`${names.join(' and ')} ${o.length>1?'share':'owns'} it. Everyone else can only read.`;
-  const act=S.mode!=='on'?`<button class="btn grn" data-a="on" style="height:50px;font-size:16px">${S.mode==='off'?'Turn it ON':'Resume'}</button>`:(o.length?`<button class="btn" data-a="brief" style="height:50px;font-size:16px">Brief ${AIS[o[0]].n}</button>`:'')+`<button class="btn ${o.length?'alt':''}" data-a="edit" style="height:50px;font-size:16px">${o.length?'Change owner':'Pick an owner'}</button>`;
-  el.innerHTML=`<div class="mv"><div class="padh"><span class="mvi" style="--c:${D.c}">${ic(d,22)}</span><h1>${D.n}</h1>${sheet?'':'<button class="chip" id="mvx">Back to Done</button>'}</div>
-   <div class="mvo">${o.map(id=>av(id)).join('')}<span>${ownTxt}</span></div>
-   <div class="mvs"><div><b>${wk.length}</b>done this week</div><div><b>${hm(min)}</b>time back</div><div><b>${open.length}</b>open now</div></div>
-   ${wait?`<div class="mvw">${wait} waiting on your decision. Check the bell on the Launch Pad.</div>`:''}
-   <div class="mvh">Who · last 7 days</div>
-   <div class="mvb">${who.length?who.map(id=>{const bots=Object.entries(by[id].bots).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`${n} ${c}`).join(', ');return `<div class="mvr">${av(id)}<span class="nm">${AIS[id].n}${bots?`<small>${bots}</small>`:''}</span><span class="bar"><i style="width:${Math.round(by[id].n/top*100)}%;background:${D.c}"></i></span><b>${by[id].n}</b></div>`}).join(''):'<div class="mvr" style="opacity:.7">No finished work this week.</div>'}</div>
-   <div class="mvh">When</div>
-   <div class="mvd" role="img" aria-label="Finished items per day, last 7 days: ${days.map(x=>x.n).join(', ')}">${days.map(x=>`<span><em>${x.n||''}</em><i style="height:${x.n?Math.max(14,Math.round(x.n/mx*100)):0}%;background:${x.n?D.c:'var(--line)'}"></i><small>${new Date(x.a).toLocaleDateString(undefined,{weekday:'narrow'})}</small></span>`).join('')}</div>
-   <div class="mvh">What</div>
-   <div class="rows" id="mvl" style="flex:1;min-height:0">${open.map(x=>`<div class="row sm">${av(x.id)}<span style="flex:1;min-width:0;display:block"><span class="who" style="display:block">${esc(x.title)}</span><span class="say" style="display:block">${x.hold?'On hold, needs your decision':'In progress'} · ${AIS[x.id].n}${x.by?' ('+esc(x.by)+')':''} · ${agoTxt(x.at)}</span></span><button class="chip" data-clr="${x.k}" aria-label="Clear the claim ${esc(x.title)}">Clear</button></div>`).join('')}${g.map(winRow).join('')}${open.length||g.length?'':`<p style="text-align:center;margin-top:16px">Nothing here yet. Work lands when an AI reports it under ${D.n}.</p>`}</div>
-   <div style="display:flex;gap:8px;flex:none">${act}</div></div>`;
-  $$('#mvl button.row',el).forEach(r=>r.onclick=()=>winSheet(g[+r.dataset.k]));
-  $$('[data-clr]',el).forEach(b=>b.onclick=async()=>{b.disabled=true;try{hydrate(await api('task',{k:b.dataset.clr}),false);toastMsg('Claim cleared.')}catch(e){toastMsg(e.message)}missionView(el,d,sheet)});
-  const shut=()=>{if(sheet){const sh=el.closest('.sheet');if(sh)sh.remove()}};
-  $$('[data-a]',el).forEach(b=>b.onclick=()=>{const a=b.dataset.a;shut();if(a==='on'){S.mode='on';saveNow();sfx('on');go(S.i)}if(a==='edit')editOwner(d);if(a==='brief')brief(o[0])});
-  const x=$('#mvx',el);if(x)x.onclick=()=>{S.fd=null;histView(el);syncPick()};
-  if(!sheet)syncPick();
-}
-function histView(el){
-  if(S.fd&&el.id==='cH'&&DESK.matches&&DOM[S.fd])return missionView(el,S.fd);
-  const team=sel(), max=1e9;
-  const all=S.wins.map(w=>({...w,when:dayTxt(w.at)}));
-  el.innerHTML=`<div class="padh"><h1>Done</h1><button class="chip" id="qz" aria-pressed="${S.quiet}">Celebrations: ${S.quiet?'Quiet':'Big'}</button>${sndBtn()}</div>
-   <input class="field" id="q" type="search" placeholder="Search what got done" aria-label="Search finished items" value="${esc(S.q)}" style="height:50px;flex:none">
-   <div class="filt"><div class="line">${team.map(id=>`<button data-id="${id}" class="${S.fa===id?'on':''}" aria-pressed="${S.fa===id}" aria-label="Only ${AIS[id].n}">${av(id)}</button>`).join('')}</div><span id="hc"></span></div>
-   <div class="rows" id="hl" style="flex:1;min-height:0" aria-live="polite"></div>
-   <div style="display:flex;gap:8px;flex:none"><button class="btn" id="pr" style="height:50px;font-size:16px">Paste a report</button><button class="btn alt" id="exp" style="height:50px;font-size:16px">Export</button></div>${navHTML()}`;
-  const draw=()=>{
-    const q=S.q.toLowerCase(), m=all.filter(w=>(!S.fa||w.id===S.fa)&&(!q||[w.text,AIS[w.id].n,DOM[w.d].n,w.when].join(' ').toLowerCase().includes(q)));
-    $('#hc').textContent=m.length>max?`Showing ${max} of ${m.length}`:`${m.length} item${m.length===1?'':'s'}`;
-    const g=groupWins(m);
-    $('#hl').innerHTML=g.length?g.map(winRow).join(''):`<p style="text-align:center;margin-top:30px">${all.length?'Nothing matches.':'Nothing yet. Finished items land here when your AIs report them.'}</p>`;
-    $$('#hl .row').forEach(r=>r.onclick=()=>winSheet(g[+r.dataset.k]));
-  };
+/* ---------- Done ---------- */
+const nrm=s=>String(s).toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+function group(list){const out=[],ix={};for(const w of list){const k=w.id+'|'+w.src+'|'+nrm(w.text);if(ix[k]){ix[k].n++;ix[k].min+=w.min||0;ix[k].first=Math.min(ix[k].first,w.at)}else out.push(ix[k]={...w,min:w.min||0,n:1,first:w.at})}return out}
+const winRow=(w,k)=>`<button class="row" data-k="${k}"><span class="a">${av(w.id)}</span><span class="t"><b>${esc(w.text)}${w.n>1?`<span class="xn">&times;${w.n}</span>`:''}</b><small>${N(w.id)}${w.by?' · '+esc(w.by):''} · ${meta(w.src).full} · ${w.n>1?'last ':''}${day(w.at)}</small></span><span class="okc">${ic('check',14,'#06301C',3)}</span></button>`;
+function winSheet(w){const m=meta(w.src),L=w.link&&/^https?:\/\//i.test(w.link)?w.link:'',a=N(w.id);
+  const sh=sheet(`<div class="big">${av(w.id)}<span class="ico" style="--c:${m.c}">${ic(m.icon,34)}</span></div><h1>${esc(w.text)}</h1><p>${a} · ${m.full} · ${day(w.at)}${w.n>1?` · reported ${w.n} times`:''}${w.min?` · ${w.min} min saved`:''}</p>${L?`<a class="btn" href="${esc(L)}" target="_blank" rel="noopener noreferrer">Open the result</a>`:''}<button class="btn ${L?'alt':''}" id="ask">Ask ${a} what it did</button>`);
+  $('#ask',sh).onclick=()=>{copy(`You reported this to Coach AI on ${new Date(w.at).toLocaleString()}: "${w.text}" under ${m.full}. Show me what you did and anything I should know.`);sh.close();toast(`Question copied. Paste it into ${a}.`)}}
+function doneView(el){const team=S.sel;
+  el.innerHTML=`<div class="padh"><h1>Done</h1><button class="chipb" id="qz" aria-pressed="${S.quiet}">Celebrations: ${S.quiet?'Quiet':'Big'}</button></div>
+   <input class="search" id="q" type="search" placeholder="Search what got done" aria-label="Search finished items" value="${esc(S.q)}">
+   <div class="filt"><div>${team.map(id=>`<button data-id="${id}" class="${S.fa===id?'on':''}" aria-pressed="${S.fa===id}" aria-label="Only ${N(id)}">${av(id)}</button>`).join('')}</div><span id="hc"></span></div>
+   <div class="rows" id="hl" aria-live="polite"></div>
+   <div class="two"><button class="btn sm" id="pr">Paste a report</button><button class="btn sm alt" id="exp">Export</button></div>${navHTML()}`;
+  let g=[];const draw=()=>{const q=S.q.toLowerCase(),m=S.log.filter(w=>(!S.fa||w.id===S.fa)&&(!q||[w.text,N(w.id),meta(w.src).full,w.by||''].join(' ').toLowerCase().includes(q)));g=group(m);
+    $('#hc',el).textContent=`${m.length} item${m.length===1?'':'s'}`;$('#hl',el).innerHTML=g.length?g.map(winRow).join(''):`<p class="note" style="margin-top:24px">${S.log.length?'Nothing matches.':'Nothing yet. Finished items land here when your AIs report them.'}</p>`;
+    $$('#hl .row',el).forEach(r=>r.onclick=()=>winSheet(g[+r.dataset.k]))};
   draw();
-  $('#pr').onclick=()=>pasteSheet(null,()=>{DESK.matches?histView(el):histView(el)});
-  $('#qz').onclick=e=>{S.quiet=!S.quiet;e.currentTarget.textContent=`Celebrations: ${S.quiet?'Quiet':'Big'}`;e.currentTarget.setAttribute('aria-pressed',S.quiet)};
-  $('#q').oninput=e=>{S.q=e.target.value.trim();draw()};
+  $('#q',el).oninput=e=>{S.q=e.target.value.trim();draw()};
   $$('.filt button',el).forEach(b=>b.onclick=()=>{S.fa=S.fa===b.dataset.id?null:b.dataset.id;$$('.filt button',el).forEach(x=>{const on=S.fa===x.dataset.id;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});draw()});
-  $('#exp').onclick=()=>{
-    const sh=openSheet(`<div class="big"><span class="ico" style="--c:var(--ink)">${ic('down',36)}</span></div><h1>Your data is yours.</h1><p>Team matrix and full log, in one file.</p><div class="cta"><button class="btn">Download my data</button></div>`);
-    $('.btn',sh).onclick=()=>{const data=JSON.stringify({exported:new Date().toISOString(),coach:S.name,team:TN(),matrix:Object.fromEntries(DORDER.map(d=>[DOM[d].n,owners(d).map(id=>AIS[id].n)])),log:all.map(w=>({item:w.text,by:AIS[w.id].n,mission:DOM[w.d].n,when:new Date(w.at).toISOString(),link:w.link||null,minutes:w.min}))},null,1);
-      try{const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='conductor-export.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toastMsg('Export downloaded.')}catch(e){copy(data);toastMsg('Export copied.')}sh.remove()};
-  };
-  bindNav();
-}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')$$('.sheet').forEach(s=>s.remove())});
-$('#sndTop').outerHTML=sndBtn();
+  $('#qz',el).onclick=e=>{S.quiet=!S.quiet;saveNow();e.currentTarget.textContent=`Celebrations: ${S.quiet?'Quiet':'Big'}`;e.currentTarget.setAttribute('aria-pressed',S.quiet)};
+  $('#pr',el).onclick=()=>pasteSheet(null,()=>render(true));
+  $('#exp',el).onclick=()=>{const data=JSON.stringify({exported:new Date().toISOString(),owner:S.name,boards:spaces(),positions:Object.fromEntries(srcs().map(src=>[src,owners(src).map(N)])),log:S.log.map(w=>({item:w.text,by:N(w.id),bot:w.by||null,source:w.src,when:new Date(w.at).toISOString(),link:w.link||null,minutes:w.min}))},null,1);
+    try{const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='coach-ai-export.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('Export downloaded.')}catch(e){copy(data);toast('Export copied.')}};
+  wireNav(el)}
 
-/* ---------- idle character animations ---------- */
-const MOVES=['look','wave','hop','squish','spin','nod','look','wave'], HI=['Hi!','Hey!','Hello!','Ready!','Yo!','Hi there!',"Let's go!"];
-function act(a,m){if(!a||[...a.classList].some(c=>c.startsWith('a-')))return;m=m||MOVES[Math.floor(Math.random()*MOVES.length)];a.classList.add('a-'+m);setTimeout(()=>a.classList.remove('a-'+m),1800)}
-function sayHi(o,t){if(RM||!o||$('.bub',o))return;const b=document.createElement('span');b.className='bub';b.textContent=t||HI[Math.floor(Math.random()*HI.length)];const lp=parseFloat(o.style.left);if(lp<30){b.style.setProperty('--tx','-25%');b.style.setProperty('--tl','25%')}else if(lp>70){b.style.setProperty('--tx','-75%');b.style.setProperty('--tl','75%')}o.appendChild(b);setTimeout(()=>b.remove(),1700);act($('.av',o),'wave')}
-const DUET=[["I'll pay the bill!","I paid it too!"],["Email is mine!","No, mine!"],["I'll book the call!","Already booked it!"],["Writing the post…","Me too!"]];
-function duet(){
-  const os=$$('.orbit .o').filter(o=>{const l=parseFloat(o.style.left);return l>10&&l<90}); if(os.length<2)return;
-  const a=os.splice(Math.floor(Math.random()*os.length),1)[0], b=os[Math.floor(Math.random()*os.length)], d=DUET[Math.floor(Math.random()*DUET.length)];
-  sayHi(a,d[0]); setTimeout(()=>sayHi(b,d[1]),800);
-  setTimeout(()=>{const L=$('.orbit .logo');if(!L||$('.bub',L))return;const x=document.createElement('span');x.className='bub fix';x.textContent='One owner each.';L.appendChild(x);setTimeout(()=>x.remove(),1700)},1900);
-}
-if(!RM)setInterval(()=>{
-  if(document.hidden)return;
-  const c=$$('.orbit .av,.tile .av,.row:not(.wait) .av,.line .av,.bplay .av,.filt .av,.newbie .av,.sheet .big .av').filter(a=>a.offsetParent&&!a.style.transform&&!a.style.animation);
-  if(!c.length)return;
-  const a=c[Math.floor(Math.random()*c.length)], o=a.closest('.orbit .o');
-  if(o&&!$('.bub')&&Math.random()<.4)return duet();
-  if(o&&Math.random()<.4)sayHi(o);else act(a);
-},1300);
-document.addEventListener('click',e=>{const o=e.target.closest('.orbit .o');if(o){sayHi(o);sfx('ding')}});
-DESK.addEventListener('change',()=>go(S.i));
-(async()=>{try{hydrate(await api('state'),true);S.sel.forEach(id=>{if(S.onboarded&&!S.joined[id])S.skipped[id]=true});build();S.i=S.onboarded?S.steps.length-1:2}catch(e){build()}render()})();
+/* ---------- Team ---------- */
+const status=id=>S.benched[id]?'On the bench':S.joined[id]?`Last heard from ${ago(S.seen[id]||S.joined[id])}`:'Not connected yet';
+function teamView(el){
+  el.innerHTML=`<div class="padh"><h1>Team</h1><button class="chipb" id="acct">Account</button></div>
+   <div class="rows" id="tl">${S.sel.map(id=>`<button class="row ${S.joined[id]&&!S.benched[id]?'':'off'}" data-id="${id}"><span class="a">${av(id)}<i class="dot ${S.benched[id]?'':S.joined[id]?(quietAI()===id?'q':'g'):''}"></i></span><span class="t"><b>${N(id)}</b><small>${status(id)}</small></span><span class="cnt">${S.log.filter(w=>w.id===id).length}</span></button>`).join('')}</div>
+   <button class="btn sm alt" id="add">+ Add an AI</button>${navHTML()}`;
+  $$('#tl .row',el).forEach(r=>r.onclick=()=>aiSheet(r.dataset.id));
+  $('#add',el).onclick=()=>{const rest=ORDER.filter(id=>!S.sel.includes(id));if(!rest.length)return toast('Every AI is already on the team.');
+    const sh=sheet(`<h1>Add a player</h1><div class="ais small">${rest.map(id=>`<button class="ai" data-id="${id}">${av(id)}<span>${N(id)}</span></button>`).join('')}</div>`);
+    $$('.ai',sh).forEach(b=>b.onclick=async()=>{const id=b.dataset.id;S.sel=ORDER.filter(x=>x===id||S.sel.includes(x));sh.close();await saveNow();render(true);connectSheet(id)})};
+  $('#acct',el).onclick=acctSheet;wireNav(el)}
+function connectSheet(id){const n=N(id);let t=0;
+  const sh=sheet(`<div class="big">${coach(70)}<span class="to listen">${av(id)}</span></div><h1>Connect ${n}</h1><p>${CONN[id]?`${ADD[id]} Then tell ${n}: "Check in to Coach AI".`:`Copy its playbook, paste it into ${n}, and send.`}</p><button class="btn" id="cp">${CONN[id]?'Copy connector link':'Copy playbook'}</button><button class="lnk" id="hp">More help and its key</button><button class="lnk" id="ps">It replied with a line? Paste it</button>`,()=>clearInterval(t));
+  const check=async()=>{await pull();if(S.joined[id]){clearInterval(t);if($('.sheet')===sh)sh.close();ding(988);toast(`${n} joined the team.`);render(true);if(conflicts().length)toast(`${n} joined. A position needs your call.`)}};
+  $('#cp',sh).onclick=e=>{copy(setupText(id));whistle();e.currentTarget.textContent=`Listening for ${n}…`;clearInterval(t);t=setInterval(check,2000)};
+  $('#hp',sh).onclick=()=>{clearInterval(t);help(id)};$('#ps',sh).onclick=()=>{clearInterval(t);pasteSheet(id,check)}}
+function aiSheet(id){const n=N(id),r=(S.reach[id]||[]).map(src=>meta(src)).filter(m=>m.s);
+  const sh=sheet(`<div class="big">${av(id)}</div><h1>${n}</h1><p>${status(id)}</p>${r.length?`<div class="chips c">${r.map(m=>`<span style="--c:${m.c}">${m.full}</span>`).join('')}</div>`:''}
+   ${S.joined[id]?`<button class="btn" data-a="brief">Brief ${n}</button><button class="btn alt" data-a="setup">Set it up again</button>`:`<button class="btn" data-a="connect">Connect ${n}</button>`}
+   <div class="two"><button class="btn sm alt" data-a="bench">${S.benched[id]?'Put back in':'Bench'}</button><button class="btn sm alt" data-a="rm">Remove</button></div>`);
+  $$('[data-a]',sh).forEach(b=>b.onclick=async()=>{const a=b.dataset.a;sh.close();
+    if(a==='brief'){try{const x=await api('update?id='+id);copy(x.text);toast(`Team state copied. Paste it into ${n}.`)}catch(e){toast(esc(e.message))}}
+    if(a==='setup'){copy(setupText(id));toast(CONN[id]?'Connector link copied.':'Playbook copied.');help(id)}
+    if(a==='connect')connectSheet(id);
+    if(a==='bench'){S.benched={...S.benched,[id]:!S.benched[id]};if(!S.benched[id])delete S.benched[id];saveNow();render(true)}
+    if(a==='rm'){const c=sheet(`<div class="big">${av(id)}</div><h1>Remove ${n}?</h1><p>Its key stops working and it leaves every position. Its finished work stays in Done.</p><button class="btn" id="y">Remove ${n}</button><button class="btn alt" id="x">Keep it</button>`);$('#x',c).onclick=()=>c.close();$('#y',c).onclick=async()=>{c.close();S.sel=S.sel.filter(x=>x!==id);await saveNow();render(true)}}})}
+function acctSheet(){const sh=sheet(`<div class="big">${coach(70)}</div><h1>${esc(S.name)}</h1><p>${esc(S.email)}</p><button class="btn alt" id="lo">Log out</button><button class="lnk danger" id="del">Delete my account</button>`);
+  $('#lo',sh).onclick=async()=>{await saveNow();try{await api('logout',{})}catch(e){}location.reload()};
+  $('#del',sh).onclick=()=>{const c=sheet(`<div class="big">${coach(70)}</div><h1>Delete everything?</h1><p>Your team, every AI key, all positions and the whole Done log are deleted for good. This cannot be undone.</p><label class="field">Type your password to confirm<input id="dp" type="password" autocomplete="current-password"></label><p id="de" class="err" role="alert"></p><button class="btn red" id="y">Delete my account</button><button class="btn alt" id="x">Keep my team</button>`);
+    $('#x',c).onclick=()=>c.close();$('#y',c).onclick=async()=>{try{await api('delete',{password:$('#dp',c).value});location.reload()}catch(e){$('#de',c).textContent=e.message}}}}
+
+/* ---------- live updates ---------- */
+async function tick(){await pull();const st=S.steps[S.i];if(!st||st.t!=='pad')return;
+  if(S.fresh.length){const w=S.fresh.shift();S.fresh=S.fresh.slice(-3);if(S.play===0&&S.wait){S.play=1;S.wait=false;saveNow()}if(!S.quiet){confetti(30);ding(1320)}toast(`${N(w.id)} finished: ${esc(w.text)}`)}
+  if(!$('.sheet')&&document.activeElement!==$('#q'))render(true)}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const s=$('.sheet');if(s)s.close()}});
+DESK.addEventListener('change',()=>render(true));
+(async()=>{build();try{hydrate(await api('state'),true);enter()}catch(e){render()}})();
+
 </script>
 </body>
 </html>

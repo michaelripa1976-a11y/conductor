@@ -10,4 +10,4 @@ http.createServer(async (req, res) => {
   const f = path.join('public', u.pathname === '/' ? 'index.html' : u.pathname);
   try { const d = await fs.readFile(f); res.setHeader('Content-Type', TYPES[path.extname(f)] || 'application/octet-stream'); res.end(d); }
   catch (e) { res.statusCode = 404; res.end('Not found'); }
-}).listen(process.env.PORT || 3000, () => console.log('Conductor dev on http://localhost:' + (process.env.PORT || 3000)));
+}).listen(process.env.PORT || 3000, () => console.log('Coach AI dev on http://localhost:' + (process.env.PORT || 3000)));
