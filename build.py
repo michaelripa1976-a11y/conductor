@@ -13,7 +13,10 @@ extra=r'''
 .lnks{display:flex;flex-direction:column;align-items:center;flex:none;margin-top:-8px}
 .lnk{min-height:40px}.lnk.danger{color:#B3261E}
 .avl{display:grid;place-items:center;border-radius:50%;background:var(--ink);color:#fff;font-weight:800;flex:none;width:44px;height:44px;font-size:20px}
-.orb img{width:44px;height:44px}.to img{width:80px;height:80px;object-fit:contain}
+.orb img{width:44px;height:44px}
+.orbw{position:absolute;left:50%;top:50%;margin:-29px 0 0 -29px;width:58px;height:58px;transition:transform .8s cubic-bezier(.3,1.35,.5,1)}
+.orbw .orb{position:relative;left:auto;top:auto;display:grid}
+.btn[disabled]#go{opacity:1;background:var(--pri);box-shadow:0 6px 0 var(--priD)}.to img{width:80px;height:80px;object-fit:contain}
 .ais{grid-template-columns:repeat(3,1fr);gap:9px}
 .ai{border-radius:20px;font-size:14px;gap:2px;padding:4px}.ai img{width:52px;height:52px}.ai .avl{width:52px;height:52px}
 .ai i{top:6px;right:6px;width:22px;height:22px}
