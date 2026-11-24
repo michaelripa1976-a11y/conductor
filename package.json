@@ -4,7 +4,14 @@
   "private": true,
   "type": "module",
   "description": "Conductor: one team for all your AIs.",
-  "scripts": { "dev": "node dev.js" },
-  "dependencies": { "@vercel/blob": "latest" },
-  "engines": { "node": ">=20" }
+  "scripts": {
+    "dev": "node dev.js",
+    "test": "node --test tests/coach.test.js"
+  },
+  "dependencies": {
+    "@vercel/blob": "latest"
+  },
+  "engines": {
+    "node": ">=20"
+  }
 }

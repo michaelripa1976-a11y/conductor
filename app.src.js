@@ -8,7 +8,7 @@ const SP={personal:{n:'Personal',icon:'home',cls:'per',m:[['email','Email','mail
  work:{n:'Work',icon:'case',cls:'wrk',m:[['email','Email','mail','#FF6B9A'],['calendar','Calendar','calendar','#FFA62B'],['chat','Chat','chat','#9B5DE5'],['files','Files','doc','#3A86FF'],['accounting','Accounting','money','#22C27A'],['social','Social','people','#F2545B'],['code','Code','code','#5B4BFF'],['clients','Clients','case','#22B8CF']]}};
 const SHARED=['personal:files','work:files','work:code'];
 const TASK={email:'Clear out my promo emails and list what needs a reply.',calendar:'Find me a free hour this week and hold it.',messages:'Summarize my unread messages.',chat:'Summarize what I missed in chat today.',payments:'List my bills due this week.',accounting:'List the invoices still unpaid.',social:'Draft one post for me to approve.',shopping:'Track my open orders.',home:'Check the thermostat schedule.',clients:'List the clients I owe a reply.'};
-const S={authed:false,name:'',email:'',team:null,otherName:null,scope:'both',sel:[],keys:{},codes:{},joined:{},skipped:{},benched:{},reach:{},seen:{},pick:{},accts:[],mode:{personal:'on',work:'on'},quiet:false,onboarded:false,play:0,
+const S={authed:false,name:'',email:'',team:null,otherName:null,scope:'both',sel:[],keys:{},codes:{},joined:{},skipped:{},benched:{},reach:{},seen:{},pick:{},accts:[],said:{},ver:{},pv:0,mode:{personal:'on',work:'on'},quiet:false,onboarded:false,play:0,
   log:[],tasks:[],needs:[],skew:0,i:0,steps:[],space:'personal',tab:'pad',fa:null,q:'',wait:false,spot:null,arrived:false,fresh:[],known:null};
 const $=(q,e=document)=>e.querySelector(q), $$=(q,e=document)=>[...e.querySelectorAll(q)];
 const DESK=matchMedia('(min-width:900px)');
@@ -35,6 +35,14 @@ const acctBy=k=>S.accts.find(a=>a.k===k);
 const aName=a=>esc(a.addr||a.label||'An account');
 const aWho=a=>a.by.length?a.by.map(N).join(' and '):'No AI';
 const untagged=()=>S.accts.filter(a=>!a.tag);
+// Did this AI's report carry anything? An empty one is a failed setup, not a result.
+const told=id=>(S.said[id]||[]).length>0||(S.reach[id]||[]).length>0||S.accts.some(a=>a.by.includes(id));
+const stale=id=>!!S.joined[id]&&told(id)&&(S.ver[id]||0)<S.pv;
+const lineAsk=id=>`Your Coach AI check-in arrived empty. Do not open any link. Reply with only this one line, filled in with your real values:\nCOACH-CHECKIN code=${S.codes[id]}; v=${S.pv}; accounts=ADDRESS(what it holds) | ADDRESS(what it holds); reach=other sources\nwhat it holds: email, calendar, chat, files. Example: accounts=me@company.com(email, calendar, files) | Gmail(email). Do not say personal or work.`;
+// One tap: read the AI's reply straight from the clipboard. Falls back to the paste box when the browser will not allow it.
+async function quickPaste(id,after){let t='';try{t=await navigator.clipboard.readText()}catch(e){}
+  if(/(COACH|CONDUCTOR)[-_ ](CHECKIN|CLAIM|DONE)/i.test(t)){try{const r=await api('paste',{text:t,id});hydrate(r.state,false);const bad=r.results.find(x=>!x.ok);toast(esc((bad||r.results[0]).msg));if(!bad)return after&&after()}catch(e){toast(esc(e.message))}}
+  pasteSheet(id,after)}
 const kindOf=src=>{const k=String(src).split(':')[1];return k==='messages'||k==='chat'?'chat':KN[k]?k:null};
 const guessLine=a=>a.tag?`Tagged ${TAGN[a.tag]}. Tap to change it.`:a.guess==='work'?'Looks like a company address. Your call.':a.guess==='personal'?'Looks like a personal one. Your call.':"I can't tell from the name. Your call.";
 async function tagAcct(a,v,addr){hydrate(await api('acct',{k:a.k,tag:v,...(addr?{addr}:{})}),false)}
@@ -47,7 +55,7 @@ let sent='';
 function hydrate(st,all){
   S.authed=true;S.name=st.name;S.email=st.email;
   if(all){for(const k of OWN)S[k]=st[k];S.pick=st.pick||{};sent=ownJSON()}
-  for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];S.accts=st.accts||[];
+  for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];S.accts=st.accts||[];S.said=st.said||{};S.ver=st.ver||{};S.pv=st.pv||0;
   for(const id of Object.keys(st.joined))delete S.skipped[id];
   S.skew=Date.now()-st.now;S.log=st.log.slice().reverse();
   if(S.known)for(const w of S.log.filter(w=>!S.known.has(w.k)).reverse())S.fresh.push(w);
@@ -85,7 +93,7 @@ B. Open these links (private, never share them):
 - state: ${B}/state
 - claim: ${B}/claim?source=BOARD:SOURCE&task=REAL+SHORT+TITLE&bot=YOUR+BOT+NAME
 - done: ${B}/done?source=BOARD:SOURCE&task=REAL+SHORT+TITLE&link=URL&minutes=N
-- check in: ${B}/checkin?accounts=ACCOUNTS&reach=LIST
+- check in: ${B}/checkin?v=${S.pv}&accounts=ACCOUNTS&reach=LIST
 C. If you can do neither, end your reply with one line for me to paste:
 COACH-CLAIM code=${c}; source=...; task=...
 COACH-DONE code=${c}; source=...; task=...; link=...; minutes=...
@@ -101,8 +109,9 @@ RIGHT NOW, do all of this yourself in one go, with no questions back to me:
 3. Check in with two things. Be honest: I decide positions from this.
    accounts = every account you are signed in to and can really ACT in (send, change, create), not just read. Write each as ADDRESS(what it holds) and separate them with |. Example: me@company.com(email, calendar, files) | Gmail(email). What it holds: email, calendar, chat, files. Give the address when you can see it. If you cannot, give the service name. Do NOT say whether an account is personal or work. I tag each one myself.
    reach = any other source from the list above that you can act on and that is not one of those accounts (code, social, payments and so on).
-4. Reply with one line: where you saved it, how you reach Coach AI, and what the check-in answered.
-No links, tools or vault? Reply with only: COACH-CHECKIN code=${c}; accounts=...; reach=...`}
+   If you cannot open a link with your own values put into it, do NOT open the check-in link as written. Skip the link and use the line in step 4.
+4. Reply with one line: where you saved it, how you reach Coach AI, and what the check-in answered. Then ALWAYS end your reply with this line, filled in with the same real values, even if the link worked:
+COACH-CHECKIN code=${c}; v=${S.pv}; accounts=...; reach=...`}
 const setupText=id=>CONN[id]?mcpUrl(id):playbookText(id);
 const ADD={grok:'Open grok.com/connectors, choose New Connector, then Custom, and paste the link.',claude:'In Claude, open Customize, then Connectors, and add a custom connector. Name it Coach AI and paste the link as its URL.',chatgpt:'In ChatGPT settings, turn on Developer mode under Apps and Connectors, create a connector and paste the link.'};
 function help(id){const n=N(id),rows=CONN[id]?[ADD[id],`Start a new chat and say: "Check in to Coach AI with every source you can act on"`,id==='grok'?'That one connection covers all your Grok bots.':`${n} then follows Coach AI in every chat.`]:[`Paste the playbook into ${n} and send`,`${n} saves it, checks in, and answers with one line`,`If it answers with a COACH-CHECKIN line, paste that line here`];
@@ -140,20 +149,24 @@ const V={
   el.innerHTML=shell(`${say('Which AIs do you use? Pick your players.')}<div class="ais ${S.sel.length?'':'stag'}">${ORDER.map(id=>`<button class="ai" data-id="${id}" aria-pressed="${S.sel.includes(id)}">${av(id)}<span>${N(id)}</span><i>${ic('check',13,'#fff',3)}</i></button>`).join('')}</div><button class="btn" id="go" ${ok()?'':'disabled'}>${ok()?`Train ${S.sel.length} AIs`:'Pick at least two'}</button>`);
   $$('.ai',el).forEach(b=>b.onclick=()=>{const id=b.dataset.id;S.sel=S.sel.includes(id)?S.sel.filter(x=>x!==id):ORDER.filter(x=>x===id||S.sel.includes(x));render(true)});
   $('#go').onclick=async()=>{if(!ok())return;const b=$('#go');b.disabled=true;b.textContent='Making their keys…';await saveNow();if(S.sel.every(id=>S.keys[id])){build();S.i=S.steps.findIndex(x=>x.t==='pick');next()}else{b.disabled=false;b.textContent='Try again'}}},
- book(el,st){const id=st.id,n=N(id),k=S.sel.indexOf(id),last=k===S.sel.length-1;let stage=S.joined[id]?3:1;
+ book(el,st){const id=st.id,n=N(id),k=S.sel.indexOf(id),last=k===S.sel.length-1;let stage=S.joined[id]?3:1,shown=told(id);
   const mine=()=>S.accts.filter(a=>a.by.includes(id));
   const onward=()=>{build();go(S.steps.findIndex(x=>x.t==='book'&&x.id===id)+1)}; // accounts arrive with the report, so the path ahead is laid out again
   const report=()=>mine().map(a=>`<div><small style="letter-spacing:0;font-size:13px;color:var(--ink)">${aName(a)}</small><span class="chips">${a.has.map(k=>`<span style="--c:${KN[k][2]}">${KN[k][0]}</span>`).join('')}</span></div>`).join('')+spaces().filter(s=>!mine().length||SP[s].m.some(m=>!kindOf(sid(s,m[0]))&&(S.reach[id]||[]).includes(sid(s,m[0])))).map(s=>{const L=SP[s].m.filter(m=>(S.reach[id]||[]).includes(sid(s,m[0])));return `<div><small>${SP[s].n.toUpperCase()}</small><span class="chips">${L.length?L.map(m=>`<span style="--c:${m[3]}">${m[1]}</span>`).join(''):'<b class="none">Nothing here</b>'}</span></div>`}).join('');
-  const draw=()=>{el.innerHTML=shell(`<div class="steps">${['Copy',CONN[id]?'Add':'Paste','Report'].map((t,q)=>`<span class="${stage===q+1?'on':''} ${stage>q+1||(stage===3&&q===2)?'ok':''}"><b>${stage>q+1||(stage===3&&q===2)?ic('check',12,'#06301C',3.5):q+1}</b>${t}</span>`).join('')}</div>
-    <div class="hero"><div class="pass"><span id="co">${coach(120)}</span><span class="to ${stage===2?'listen':''}">${av(id)}</span><b class="book"></b></div>${stage===2?'<div class="dots"><i></i><i></i><i></i></div>':''}${stage===2&&CONN[id]?`<div class="list stag" style="width:100%"><div><b class="num">1</b>${ADD[id]}</div><div><b class="num">2</b>Start a new chat with ${n} and say: Check in to Coach AI</div><div><b class="num">!</b>The link goes in ${n}'s connector settings. Pasting it into a chat does nothing.</div></div>`:''}${stage===3?`<div class="rep stag">${report()}</div>`:''}</div>
-    <div class="txt"><h1>${stage===1?`${n}, here is your playbook.`:stage===2?(CONN[id]?`Add it as a connector in ${n}.`:`Now paste it into ${n}.`):`${n} reported back.`}</h1><p>${stage===1?`AI ${k+1} of ${S.sel.length}. One tap copies ${CONN[id]?'its connector link':'it'}.`:stage===2?`Coach is listening for ${n}…`:(mine().length?`It can act in ${mine().length} account${mine().length>1?'s':''}. You tag them next.`:(S.reach[id]||[]).length?'This is what it says it can act on.':'It joined, but named no source yet.')}</p></div>
-    <button class="btn" id="go" ${stage===2?'disabled':''}>${stage===1?(CONN[id]?'Copy connector link':'Copy playbook'):stage===2?`Listening for ${n}…`:last?(S.accts.some(a=>a.by.length)?'Tag your accounts':'See the results'):`Next: ${N(S.sel[k+1])}`}</button>
+  const draw=()=>{el.innerHTML=shell(`<div class="steps">${['Copy',CONN[id]?'Add':'Paste','Report'].map((t,q)=>`<span class="${stage===q+1?'on':''} ${stage>q+1||(stage===3&&q===2&&told(id))?'ok':''}"><b>${stage>q+1||(stage===3&&q===2&&told(id))?ic('check',12,'#06301C',3.5):q+1}</b>${t}</span>`).join('')}</div>
+    <div class="hero"><div class="pass"><span id="co">${coach(120)}</span><span class="to ${stage===2?'listen':''}">${av(id)}</span><b class="book"></b></div>${stage===2?'<div class="dots"><i></i><i></i><i></i></div>':''}${stage===2&&CONN[id]?`<div class="list stag" style="width:100%"><div><b class="num">1</b>${ADD[id]}</div><div><b class="num">2</b>Start a new chat with ${n} and say: Check in to Coach AI</div><div><b class="num">!</b>The link goes in ${n}'s connector settings. Pasting it into a chat does nothing.</div></div>`:''}${stage===3&&told(id)?`<div class="rep stag">${report()}</div>`:''}</div>
+    <div class="txt"><h1>${stage===1?`${n}, here is your playbook.`:stage===2?(CONN[id]?`Add it as a connector in ${n}.`:`Now paste it into ${n}.`):(told(id)?`${n} reported back.`:`${n}'s report came back empty.`)}</h1><p>${stage===1?`AI ${k+1} of ${S.sel.length}. One tap copies ${CONN[id]?'its connector link':'it'}.`:stage===2?`Coach is listening for ${n}…`:(mine().length?`It can act in ${mine().length} account${mine().length>1?'s':''}. You tag them next.`:told(id)?'This is what it says it can act on.':`Copy ${n}'s whole reply, then tap the button. No reply line? Ask it again.`)}</p></div>
+    <button class="btn" id="go" ${stage===2?'disabled':''}>${stage===1?(CONN[id]?'Copy connector link':'Copy playbook'):stage===2?`Listening for ${n}…`:!told(id)?`Paste ${n}'s reply`:last?(S.accts.some(a=>a.by.length)?'Tag your accounts':'See the results'):`Next: ${N(S.sel[k+1])}`}</button>
+    ${stage===3&&!told(id)?`<div class="lnks"><button class="lnk" id="ask">Ask ${n} again (copies the message)</button><button class="lnk" id="sk">Skip ${n} for now</button></div>`:''}
     ${stage===2?`<div class="lnks"><button class="lnk" id="hp">${CONN[id]?'No connectors? Use the playbook instead':'What do I do?'}</button><button class="lnk" id="ps">It replied with a line? Paste it</button><button class="lnk" id="sk">Skip ${n} for now</button></div>`:''}`,st);
    wireBack();
-   $('#go').onclick=()=>{if(stage===3)return onward();if(stage!==1)return;copy(setupText(id));whistle();$('#co').classList.add('toot');const bk=$('.book',el);bk.style.setProperty('--dx','120px');bk.style.setProperty('--dy','0px');bk.classList.add('fly');setTimeout(()=>{stage=2;draw();clearInterval(iv);iv=setInterval(check,2000)},750)};
-   if(stage===2){$('#hp').onclick=()=>help(id);$('#ps').onclick=()=>pasteSheet(id,check);$('#sk').onclick=()=>{clearInterval(iv);S.skipped[id]=true;onward()}}};
-  const check=async()=>{if(S.steps[S.i]!==st)return clearInterval(iv);await pull();if(S.joined[id]&&stage!==3&&!$('.sheet')){clearInterval(iv);stage=3;ding(988);draw();if(last)confetti(24)}};
-  draw()},
+   $('#go').onclick=()=>{if(stage===3)return told(id)?onward():quickPaste(id,check);if(stage!==1)return;copy(setupText(id));whistle();$('#co').classList.add('toot');const bk=$('.book',el);bk.style.setProperty('--dx','120px');bk.style.setProperty('--dy','0px');bk.classList.add('fly');setTimeout(()=>{stage=2;draw();clearInterval(iv);iv=setInterval(check,2000)},750)};
+   if(stage===2){$('#hp').onclick=()=>help(id);$('#ps').onclick=()=>quickPaste(id,check)}
+   const a=$('#ask');if(a)a.onclick=()=>{copy(lineAsk(id));toast(`Copied. Paste it into ${n}.`)};
+   const sk=$('#sk');if(sk)sk.onclick=()=>{clearInterval(iv);if(!S.joined[id])S.skipped[id]=true;onward()}};
+  const check=async()=>{if(S.steps[S.i]!==st)return clearInterval(iv);await pull();if(!S.joined[id]||$('.sheet'))return;const full=told(id);if(stage===3&&full===shown)return; // an empty report keeps Coach listening: the AI may still get it right
+   stage=3;shown=full;draw();if(full){clearInterval(iv);ding(988);if(last)confetti(24)}};
+  draw();if(stage===3&&!shown){clearInterval(iv);iv=setInterval(check,2000)}},
  acct(el,st){const a=acctBy(st.k);if(!a)return void setTimeout(next,0);
   const all=S.steps.filter(x=>x.t==='acct'),at=all.indexOf(st)+1,sp=spaces(),two=sp.length===2,c=KN[a.has[0]]||KN.email;
   const O=two?[['personal','home','#22B8CF','#06303A','Personal'],['work','case','#5B4BFF','#fff','Work']]:[[sp[0],SP[sp[0]].icon,sp[0]==='work'?'#5B4BFF':'#22B8CF',sp[0]==='work'?'#fff':'#06303A',SP[sp[0]].n],['off','check','#221C44','#fff','Hands off']];
@@ -184,7 +197,7 @@ function loginSheet(){const sh=sheet(`<div class="big">${coach(84)}</div><h1>Wel
 function enter(){S.space=spaces()[0];build();const f=t=>S.steps.findIndex(t);
   if(S.onboarded)return go(S.steps.length-1);
   if(S.sel.length<2)return go(f(x=>x.t==='pick'));
-  const b=f(x=>x.t==='book'&&!S.joined[x.id]&&!S.skipped[x.id]),u=f(x=>x.t==='acct'&&acctBy(x.k)&&!acctBy(x.k).tag);go(b>=0?b:u>=0?u:f(x=>x.t==='results'))}
+  const b=f(x=>x.t==='book'&&(!S.joined[x.id]||!told(x.id))&&!S.skipped[x.id]),u=f(x=>x.t==='acct'&&acctBy(x.k)&&!acctBy(x.k).tag);go(b>=0?b:u>=0?u:f(x=>x.t==='results'))}
 
 /* ---------- Launch Pad ---------- */
 const navHTML=()=>DESK.matches?'':`<div class="nav">${[['pad','Pad'],['team','Team'],['done',S.log.length+' Done']].map(([k,t])=>`<button data-t="${k}" ${S.tab===k?'aria-current="page"':''}>${t}</button>`).join('')}</div>`;
@@ -272,17 +285,20 @@ function doneView(el){const team=S.sel;
   wireNav(el)}
 
 /* ---------- Team ---------- */
-const status=id=>S.benched[id]?'On the bench':S.joined[id]?`Last heard from ${ago(S.seen[id]||S.joined[id])}`:'Not connected yet';
+const status=id=>S.benched[id]?'On the bench':!S.joined[id]?'Not connected yet':!told(id)?'Report came back empty. Tap to fix':stale(id)?'Needs the new playbook. Tap to update':`Last heard from ${ago(S.seen[id]||S.joined[id])}`;
 function teamView(el){
   el.innerHTML=`<div class="padh"><h1>Team</h1><button class="chipb" id="acct">Account</button></div>
-   <div class="rows" id="tl">${S.sel.map(id=>`<button class="row ${S.joined[id]&&!S.benched[id]?'':'off'}" data-id="${id}"><span class="a">${av(id)}<i class="dot ${S.benched[id]?'':S.joined[id]?(quietAI()===id?'q':'g'):''}"></i></span><span class="t"><b>${N(id)}</b><small>${status(id)}</small></span><span class="cnt">${S.log.filter(w=>w.id===id).length}</span></button>`).join('')}</div>
+   <div class="rows" id="tl">${S.sel.map(id=>`<button class="row ${S.joined[id]&&!S.benched[id]?'':'off'}" data-id="${id}"><span class="a">${av(id)}<i class="dot ${S.benched[id]?'':S.joined[id]?(quietAI()===id||!told(id)||stale(id)?'q':'g'):''}"></i></span><span class="t"><b>${N(id)}</b><small>${status(id)}</small></span><span class="cnt">${S.log.filter(w=>w.id===id).length}</span></button>`).join('')}</div>
    <div class="two"><button class="btn sm alt" id="add">+ Add an AI</button><button class="btn sm alt" id="acs">Accounts${untagged().length?` (${untagged().length})`:''}</button></div>${navHTML()}`;
   $('#acs',el).onclick=acctsSheet;
-  $$('#tl .row',el).forEach(r=>r.onclick=()=>aiSheet(r.dataset.id));
+  $$('#tl .row',el).forEach(r=>r.onclick=()=>{const id=r.dataset.id;S.joined[id]&&!told(id)&&!S.benched[id]?emptySheet(id):aiSheet(id)});
   $('#add',el).onclick=()=>{const rest=ORDER.filter(id=>!S.sel.includes(id));if(!rest.length)return toast('Every AI is already on the team.');
     const sh=sheet(`<h1>Add a player</h1><div class="ais small">${rest.map(id=>`<button class="ai" data-id="${id}">${av(id)}<span>${N(id)}</span></button>`).join('')}</div>`);
     $$('.ai',sh).forEach(b=>b.onclick=async()=>{const id=b.dataset.id;S.sel=ORDER.filter(x=>x===id||S.sel.includes(x));sh.close();await saveNow();render(true);connectSheet(id)})};
   $('#acct',el).onclick=acctSheet;wireNav(el)}
+// An AI that joined with nothing in its report: say so, and fix it in one tap.
+function emptySheet(id){const n=N(id),sh=sheet(`<div class="big">${coach(70)}${av(id)}</div><h1>${n}'s report came back empty.</h1><p>Copy ${n}'s whole reply, then tap the button. No reply line? Ask it again.</p><button class="btn" id="pp">Paste ${n}'s reply</button><button class="lnk" id="ask">Ask ${n} again (copies the message)</button>`);
+  $('#pp',sh).onclick=()=>{sh.close();quickPaste(id,()=>{render(true);if(S.needs.some(x=>x.t==='tag'))needSheet()})};$('#ask',sh).onclick=()=>{copy(lineAsk(id));toast(`Copied. Paste it into ${n}.`)}}
 /* ---------- Accounts ---------- */
 const tagPill=a=>`<span class="tg ${a.tag||''}">${a.tag?TAGN[a.tag]:'Tag it'}</span>`;
 function acctsSheet(){const L=S.accts;
@@ -294,12 +310,12 @@ function tagSheet(k,after){const a=acctBy(k);if(!a)return after&&after();const c
   $$('.btn',sh).forEach(b=>b.onclick=async()=>{const ad=$('#ad',sh);try{await tagAcct(a,b.dataset.v,ad?ad.value.trim():'');ding(1175)}catch(e){toast(esc(e.message))}sh.close();after&&after()})}
 function connectSheet(id){const n=N(id);let t=0;
   const sh=sheet(`<div class="big">${coach(70)}<span class="to listen">${av(id)}</span></div><h1>Connect ${n}</h1><p>${CONN[id]?`${ADD[id]} Then start a new chat and say: Check in to Coach AI. Pasting the link into a chat does nothing.`:`Copy its playbook, paste it into ${n}, and send.`}</p><button class="btn" id="cp">${CONN[id]?'Copy connector link':'Copy playbook'}</button><button class="lnk" id="hp">More help and its key</button><button class="lnk" id="ps">It replied with a line? Paste it</button>`,()=>clearInterval(t));
-  const check=async()=>{await pull();if(S.joined[id]){clearInterval(t);if($('.sheet')===sh)sh.close();ding(988);toast(`${n} joined the team.`);render(true);if(S.needs.some(x=>x.t==='tag'))return needSheet();if(conflicts().length)toast(`${n} joined. A position needs your call.`)}};
+  const check=async()=>{await pull();if(S.joined[id]&&!told(id)){clearInterval(t);if($('.sheet')===sh)sh.close();render(true);return emptySheet(id)}if(S.joined[id]){clearInterval(t);if($('.sheet')===sh)sh.close();ding(988);toast(`${n} joined the team.`);render(true);if(S.needs.some(x=>x.t==='tag'))return needSheet();if(conflicts().length)toast(`${n} joined. A position needs your call.`)}};
   $('#cp',sh).onclick=e=>{copy(setupText(id));whistle();e.currentTarget.textContent=`Listening for ${n}…`;clearInterval(t);t=setInterval(check,2000)};
-  $('#hp',sh).onclick=()=>{clearInterval(t);help(id)};$('#ps',sh).onclick=()=>{clearInterval(t);pasteSheet(id,check)}}
+  $('#hp',sh).onclick=()=>{clearInterval(t);help(id)};$('#ps',sh).onclick=()=>{clearInterval(t);quickPaste(id,check)}}
 function aiSheet(id){const n=N(id),r=(S.reach[id]||[]).map(src=>meta(src)).filter(m=>m.s);
   const sh=sheet(`<div class="big">${av(id)}</div><h1>${n}</h1><p>${status(id)}</p>${r.length?`<div class="chips c">${r.map(m=>`<span style="--c:${m.c}">${m.full}</span>`).join('')}</div>`:''}
-   ${S.joined[id]?`<button class="btn" data-a="brief">Brief ${n}</button><button class="btn alt" data-a="setup">Set it up again</button>`:`<button class="btn" data-a="connect">Connect ${n}</button>`}
+   ${S.joined[id]?(stale(id)?`<button class="btn" data-a="setup">Give ${n} the new playbook</button><button class="btn alt" data-a="brief">Brief ${n}</button>`:`<button class="btn" data-a="brief">Brief ${n}</button><button class="btn alt" data-a="setup">Set it up again</button>`):`<button class="btn" data-a="connect">Connect ${n}</button>`}
    <div class="two"><button class="btn sm alt" data-a="bench">${S.benched[id]?'Put back in':'Bench'}</button><button class="btn sm alt" data-a="rm">Remove</button></div>`);
   $$('[data-a]',sh).forEach(b=>b.onclick=async()=>{const a=b.dataset.a;sh.close();
     if(a==='brief'){try{const x=await api('update?id='+id);copy(x.text);toast(`Team state copied. Paste it into ${n}.`)}catch(e){toast(esc(e.message))}}

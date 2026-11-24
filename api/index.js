@@ -4,7 +4,7 @@
 import crypto from 'node:crypto';
 import { getDoc, putDoc, delDoc, updateDoc, Exists, Conflict, Busy, storageKind } from '../lib/store.js';
 import { SPACES, SPACE_NAME, ALL, AI_ORDER, toSources, toSource, clean, cleanLink, aiName, live, owners, reachers, conflicts, inScope, scopeSpaces, isShared, srcName, spaceOf, norm, newTeam, upgrade, stateText,
-  TAGS, KIND_NAME, ACCT_SRC, acctList, acctByK, acctHas, acctName, guessTag, parseAccounts, setAccounts, setAddr, dropEmpty, recompute, recomputeAll, untaggedFor } from '../lib/logic.js';
+  PLAYBOOK, real, TAGS, KIND_NAME, ACCT_SRC, acctList, acctByK, acctHas, acctName, guessTag, parseAccounts, setAccounts, setAddr, dropEmpty, recompute, recomputeAll, untaggedFor } from '../lib/logic.js';
 
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
@@ -43,7 +43,7 @@ function view(t) {
   const accts = acctList(t).map(a => ({ k: a.k, addr: a.addr, label: a.label, has: acctHas(a), by: t.sel.filter(id => a.by[id]), tag: a.tag, guess: guessTag(a) })).filter(a => a.by.length || a.tag);
   const needs = t.needs.filter(n => n.t !== 'tag' || accts.some(a => a.k === n.acct && !a.tag)); // a tag question only while its account is still untagged
   return { name: t.name, email: t.email, team: t.team, otherName: t.otherName, scope: t.scope, sel: t.sel, keys: t.keys, codes: t.codes, joined: t.joined, skipped: t.skipped, benched: t.benched,
-    reach: t.reach, accts, seen: t.seen, pick: t.own, own, can, conflicts: conflicts(t), mode: t.mode, quiet: t.quiet, onboarded: t.onboarded, play: t.play || 0,
+    reach: t.reach, said: t.said, accts, ver: t.ver, pv: PLAYBOOK, seen: t.seen, pick: t.own, own, can, conflicts: conflicts(t), mode: t.mode, quiet: t.quiet, onboarded: t.onboarded, play: t.play || 0,
     log: t.log.slice(-600), tasks: t.tasks.filter(x => x.status === 'open').slice(-100), needs, blocked: t.blocked, now: Date.now() };
 }
 const addNeed = (t, n) => { if (t.needs.length < 30 && !t.needs.some(x => x.sig === n.sig)) t.needs.push({ k: 'n' + (++t.n), at: Date.now(), ...n }); };
@@ -77,13 +77,17 @@ function tagAcct(t, a, tag) {
 }
 const ACCT_HELP = 'Send accounts=ADDRESS(what it holds) separated by |, for example accounts=me@company.com(email, calendar, files) | Gmail(email). What it holds: email, calendar, chat, files. Do not say personal or work: the owner tags each account.';
 const SRC_HELP = () => `Name the source as board:source, one of: ${ALL.join(', ')}.`;
-function doCheckin(t, id, reach, accounts) {
+function doCheckin(t, id, reach, accounts, v) {
   join(t, id); t.seen[id] = Date.now();
-  const r = toSources(reach, t), sent = accounts != null && String(accounts).trim() !== '';
+  reach = real(reach); accounts = real(accounts); // "LIST" or "ACCOUNTS" is the template, not a report
+  if (+v > 0) t.ver[id] = Math.min(99, Math.round(+v));
+  const r = toSources(reach, t), sent = accounts !== '';
   if (r.length || !t.said[id].length) t.said[id] = r;
   if (sent) { const list = parseAccounts(accounts); if (list.length) for (const a of setAccounts(t, id, list)) if (t.onboarded) askTag(t, a, id); }
   recompute(t, id);
   const mine = acctList(t).filter(a => a.by[id]), wait = mine.filter(a => !a.tag), other = t.said[id].filter(src => !mine.length || !ACCT_SRC.includes(src));
+  // Nothing usable arrived. The owner sees this as a failed report, and the AI is told the one thing that always works.
+  if (!mine.length && !t.said[id].length) return `NOT RECORDED. Coach AI heard from you, but your report was empty or still had the template text in it. Do not open the check-in link as written. Reply to the owner with only this line, filled in with your real values:\nCOACH-CHECKIN code=${t.codes[id]}; v=${PLAYBOOK}; accounts=ADDRESS(what it holds) | ADDRESS(what it holds); reach=other sources\nExample: COACH-CHECKIN code=${t.codes[id]}; v=${PLAYBOOK}; accounts=me@company.com(email, calendar, files) | Gmail(email); reach=work:code`;
   return `Checked in. Welcome to the team, ${aiName(t, id)}.\n`
     + (mine.length ? `Recorded your accounts: ${mine.map(a => `${acctName(a)} (${a.by[id].map(k => KIND_NAME[k]).join(', ')})`).join('; ')}.\n` : `You named no accounts. ${ACCT_HELP}\n`)
     + (wait.length ? `Not tagged yet: ${wait.map(acctName).join(', ')}. The owner says whether each is personal or work. Do not act in an untagged account.\n` : '')
@@ -176,7 +180,7 @@ async function runAgent(key, action, p) {
   const act = t => {
     upgrade(t);
     if (bad(t)) { out = NOT_FOUND; return false; }
-    if (action === 'checkin') out = doCheckin(t, id, p('reach') || p('good'), p('accounts'));
+    if (action === 'checkin') out = doCheckin(t, id, p('reach') || p('good'), p('accounts'), p('v'));
     else if (action === 'claim') out = doClaim(t, id, p('source') || p('mission'), p('task'), p('bot'));
     else if (action === 'done') out = doDone(t, id, p('source') || p('mission'), p('task'), p('link'), p('minutes'), p('bot'));
     else { join(t, id); t.seen[id] = Date.now(); out = stateText(t, id); if (t.nudges && t.nudges[id]) delete t.nudges[id]; }
@@ -228,7 +232,7 @@ const MCP_RULES = "You are connected to Coach AI, the owner's shared list of whi
 const BOT_FIELD = { type: 'string', description: 'Your own bot or assistant name, when several bots share this connection (for example "Instagram posts"). Shown to the owner next to the AI name.' };
 const MCP_TOOLS = [
   { name: 'coach_state', title: 'Read team state', description: 'Call first before any do/send/change/draft/schedule task. Returns each board\'s switch (ON, PAUSED or OFF), the sources you act on, the shared sources, which AI acts on every source, open tasks, recent finished work and messages from the owner.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true } },
-  { name: 'coach_checkin', title: 'Check in', description: 'Call once, the first time you are connected, and again only if what you can reach changes. Report every account you can really ACT in (send, change, create), not just read. Never say whether an account is personal or work: the owner tags each one.', inputSchema: { type: 'object', properties: { accounts: { type: 'string', description: 'Every account you are signed in to and can act in, as ADDRESS(what it holds) separated by |. Example: me@company.com(email, calendar, files) | Gmail(email). What it holds: email, calendar, chat, files. Give the address when you can see it, otherwise the service name.' }, reach: { type: 'string', description: 'Any other sources you can act on that are not an account (code, social, payments and so on), comma-separated, each as board:source. Choose from: ' + ALL.join(', ') } }, additionalProperties: false } },
+  { name: 'coach_checkin', title: 'Check in', description: 'Call once, the first time you are connected, and again only if what you can reach changes. Report every account you can really ACT in (send, change, create), not just read. Never say whether an account is personal or work: the owner tags each one.', inputSchema: { type: 'object', properties: { accounts: { type: 'string', description: 'Every account you are signed in to and can act in, as ADDRESS(what it holds) separated by |. Example: me@company.com(email, calendar, files) | Gmail(email). What it holds: email, calendar, chat, files. Give the address when you can see it, otherwise the service name.' }, v: { type: 'number', description: 'Playbook version. Send ' + PLAYBOOK + '.' }, reach: { type: 'string', description: 'Any other sources you can act on that are not an account (code, social, payments and so on), comma-separated, each as board:source. Choose from: ' + ALL.join(', ') } }, additionalProperties: false } },
   { name: 'coach_claim', title: 'Claim a task', description: 'REQUIRED before acting on any source. Use a real short task title that says what the task is; placeholder text is rejected. If the reply starts with BLOCKED or HOLD, stop and tell the user. A claim is never approval to send or delete anything.', inputSchema: { type: 'object', properties: { source: SRC_ENUM, task: { type: 'string', minLength: 4, description: 'Real short task title, 4 to 90 characters, for example "Reply to landlord about the lease".' }, bot: BOT_FIELD }, required: ['source', 'task'], additionalProperties: false } },
   { name: 'coach_done', title: 'Report a finished task', description: 'REQUIRED right after you finish a task you claimed. Send the source, the same title, a link if one exists and honest minutes saved. Then end your reply with "Coach: reported".', inputSchema: { type: 'object', properties: { source: SRC_ENUM, task: { type: 'string', minLength: 4, description: 'The same real short title you claimed.' }, link: { type: 'string', description: 'https link to the result, if one exists.' }, minutes: { type: 'number', description: 'Your honest estimate of minutes saved for the owner.' }, bot: BOT_FIELD }, required: ['task'], additionalProperties: false } },
 ];
@@ -347,7 +351,7 @@ async function coach(req, res, parts, q) {
       if (['personal', 'work', 'both'].includes(b.scope) && b.scope !== t.scope) { t.scope = b.scope; recomputeAll(t); }
       if (Array.isArray(b.sel)) {
         const sel = AI_ORDER.filter(id => b.sel.includes(id));
-        for (const id of t.sel) if (!sel.includes(id)) { gone.push(t.keys[id]); for (const m of ['keys', 'codes', 'joined', 'skipped', 'benched', 'reach', 'said', 'seen']) delete t[m][id]; for (const a of acctList(t)) delete a.by[id]; }
+        for (const id of t.sel) if (!sel.includes(id)) { gone.push(t.keys[id]); for (const m of ['keys', 'codes', 'joined', 'skipped', 'benched', 'reach', 'said', 'ver', 'seen']) delete t[m][id]; for (const a of acctList(t)) delete a.by[id]; }
         for (const id of sel) if (!t.keys[id]) { t.keys[id] = 'cdr_' + rid(21); t.codes[id] = rid(4).replace(/[-_]/g, 'x').toUpperCase().slice(0, 6); made.push([id, t.keys[id]]); }
         t.sel = sel;
       }
@@ -434,8 +438,8 @@ async function coach(req, res, parts, q) {
         let id = t.sel.find(x => t.codes[x] && t.codes[x] === String(p.code || '').toUpperCase().trim());
         if (!id && t.sel.includes(b.id)) id = b.id;
         if (!id) { results.push({ ok: false, msg: 'Could not tell which AI this is from. The code is missing or wrong.' }); continue; }
-        const msg = kind === 'CHECKIN' ? doCheckin(t, id, p.reach || p['can reach'] || p.good, p.accounts || p.account) : kind === 'CLAIM' ? doClaim(t, id, p.source || p.mission, p.task, p.bot) : doDone(t, id, p.source || p.mission, p.task, p.link, p.minutes, p.bot);
-        results.push({ ok: !/^(REJECTED|BLOCKED|HOLD)/.test(msg), kind, id, msg: msg.split('\n')[0] });
+        const msg = kind === 'CHECKIN' ? doCheckin(t, id, p.reach || p['can reach'] || p.good, p.accounts || p.account, p.v) : kind === 'CLAIM' ? doClaim(t, id, p.source || p.mission, p.task, p.bot) : doDone(t, id, p.source || p.mission, p.task, p.link, p.minutes, p.bot);
+        results.push({ ok: !/^(REJECTED|BLOCKED|HOLD|NOT RECORDED)/.test(msg), kind, id, msg: msg.split('\n')[0].replace(/ Do not open the check-in link.*$/, '') });
       }
     });
     return t ? send(res, 200, { results, state: view(t) }) : send(res, 401, { error: 'Not signed in.' });

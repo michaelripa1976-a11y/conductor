@@ -33,6 +33,17 @@ Needs a private Blob store connected to the project (`BLOB_READ_WRITE_TOKEN`) an
 - A tagged account puts its AIs on that board's sources. An untagged account gives no position: a claim there answers HOLD and the owner gets a card.
 - AIs still on the older playbook (sources only, no accounts) keep working as before.
 
+## Setup that checks itself
+
+- One path for every AI: copy the playbook, paste it into the AI. No connector settings needed.
+- The playbook tells the AI to end its reply with a filled-in `COACH-CHECKIN` line, whether or not it could open its link.
+- A check-in that is empty or still holds the template text (`reach=LIST`) is not a report. The AI is told so, the owner sees "report came back empty", and one tap reads the AI's reply from the clipboard.
+- Each check-in carries the playbook version (`v=`). The Team tab marks an AI that is still on an older playbook.
+
+## Tests
+
+    npm test
+
 ## AI links
 
     /a/<key>/checkin?accounts=me@company.com(email,calendar,files)|Gmail(email)&reach=work:code
