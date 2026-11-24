@@ -231,13 +231,17 @@ textarea:focus{outline:none;border-color:var(--pri)}
 a.btn{display:grid;place-items:center;text-decoration:none}
 .play.warn{background:#FFC83D;color:#221C44}.play.warn small{color:#5A3D00}.play.warn .do{background:var(--ink);color:#fff}
 .pick{max-width:100%}.pick .avl{width:48px;height:48px}
-@media(min-width:980px){
-  #app.wide{width:min(96vw,1240px);height:min(94dvh,860px)}
-  .scr.desk{display:grid;grid-template-columns:320px minmax(0,1fr) 360px;gap:20px;padding:22px}
+@media(min-width:900px){
+  #app{width:min(96vw,1240px);height:min(94dvh,860px)}
+  .scr:not(.desk){width:100%;max-width:640px;margin:0 auto;padding:28px 20px 30px;gap:18px}
+  .scr:not(.desk) h1{font-size:36px}.scr:not(.desk) p{font-size:18px}
+  .ais{grid-template-columns:repeat(4,1fr);gap:12px}.ai{font-size:16px}.ai img,.ai .avl{width:64px;height:64px}
+  .say div{font-size:17px}
+  .scr.desk{display:grid;grid-template-columns:clamp(270px,25vw,330px) minmax(0,1fr) clamp(300px,28vw,370px);gap:20px;padding:22px}
   .col{display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0}
   #cT,#cH{background:rgba(255,255,255,.5);border-radius:24px;padding:14px}
-  .wide .sheet{align-items:center;justify-content:center}.wide .sheet>div{width:440px;border-radius:32px}
-  .wide .toast{left:auto;right:28px;bottom:28px;width:360px}
+  .sheet{align-items:center;justify-content:center}.sheet>div{width:460px;border-radius:32px}
+  .toast{left:auto;right:28px;bottom:28px;width:360px}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -265,7 +269,7 @@ const TASK={email:'Clear out my promo emails and list what needs a reply.',calen
 const S={authed:false,name:'',email:'',team:null,otherName:null,scope:'both',sel:[],keys:{},codes:{},joined:{},skipped:{},benched:{},reach:{},seen:{},pick:{},mode:{personal:'on',work:'on'},quiet:false,onboarded:false,play:0,
   log:[],tasks:[],needs:[],skew:0,i:0,steps:[],space:'personal',tab:'pad',fa:null,q:'',wait:false,spot:null,arrived:false,fresh:[],known:null};
 const $=(q,e=document)=>e.querySelector(q), $$=(q,e=document)=>[...e.querySelectorAll(q)];
-const DESK=matchMedia('(min-width:980px)');
+const DESK=matchMedia('(min-width:900px)');
 const now=()=>Date.now()-S.skew;
 const ago=ts=>{const m=Math.max(0,Math.round((now()-ts)/6e4));return m<2?'just now':m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`};
 const day=ts=>{const t=new Date();t.setHours(0,0,0,0);return ts>=t.getTime()?'Today':ts>=t.getTime()-864e5?'Yesterday':new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})};

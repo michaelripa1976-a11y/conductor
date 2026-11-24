@@ -11,7 +11,7 @@ const TASK={email:'Clear out my promo emails and list what needs a reply.',calen
 const S={authed:false,name:'',email:'',team:null,otherName:null,scope:'both',sel:[],keys:{},codes:{},joined:{},skipped:{},benched:{},reach:{},seen:{},pick:{},mode:{personal:'on',work:'on'},quiet:false,onboarded:false,play:0,
   log:[],tasks:[],needs:[],skew:0,i:0,steps:[],space:'personal',tab:'pad',fa:null,q:'',wait:false,spot:null,arrived:false,fresh:[],known:null};
 const $=(q,e=document)=>e.querySelector(q), $$=(q,e=document)=>[...e.querySelectorAll(q)];
-const DESK=matchMedia('(min-width:980px)');
+const DESK=matchMedia('(min-width:900px)');
 const now=()=>Date.now()-S.skew;
 const ago=ts=>{const m=Math.max(0,Math.round((now()-ts)/6e4));return m<2?'just now':m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`};
 const day=ts=>{const t=new Date();t.setHours(0,0,0,0);return ts>=t.getTime()?'Today':ts>=t.getTime()-864e5?'Yesterday':new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})};
