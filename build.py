@@ -1,14 +1,18 @@
 # Assembles public/index.html from the approved demo's styles and helpers plus app.src.js.
 import re
-import os
-HERE=os.path.dirname(os.path.abspath(__file__))
-demo=open(os.path.join(HERE,'ui','base.html')).read()
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+demo = (HERE / 'ui' / 'base.html').read_text(encoding='utf-8')
+app = (HERE / 'app.src.js').read_text(encoding='utf-8')
 css=re.search(r'<style>(.*?)</style>',demo,re.S).group(1)
 helpers='\n'.join(l for l in demo.split('\n') if l.startswith(('const IC=','const ic=','const coach=','const RM=','function confetti','function ding','function whistle')))
 extra=r'''
 /* ---------- production additions ---------- */
 .demo{display:none}
 .sheet>div{max-height:94%;overflow:auto}
+.guided-connect{display:flex;flex-direction:column;align-items:stretch;gap:14px;text-align:center;overflow:auto;min-height:0;padding:4px 2px 8px}
+.scr>.guided-connect{flex:1}
 .note{text-align:center;font-size:14px;flex:none}
 .err{color:#B3261E;font-size:14px;min-height:18px;text-align:center}
 .toast{position:absolute;left:16px;right:16px;bottom:84px;z-index:9;background:var(--ink);color:#fff;border-radius:18px;padding:12px 16px;font-weight:800;font-size:15px;text-align:center;animation:rise .35s both;box-shadow:0 8px 24px rgba(0,0,0,.3)}
@@ -146,11 +150,11 @@ html=f'''<!DOCTYPE html>
 <div id="app"><div class="scr" id="scr"></div></div>
 <script>
 {helpers}
-{open('app.src.js').read()}
+{app}
 </script>
 </body>
 </html>
 '''
-open('public/index.html','w').write(html)
-js=re.search(r'<script>(.*)</script>',html,re.S).group(1); open('/tmp/app.js','w').write(js)
+with (HERE / 'public' / 'index.html').open('w', encoding='utf-8', newline='\n') as generated:
+    generated.write(html)
 print(len(html))
