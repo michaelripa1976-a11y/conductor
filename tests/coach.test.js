@@ -17,10 +17,11 @@ let n = 0;
 async function team(sel) {
   const r = await fetch(base + '/api/signup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Mike', email: `t${++n}@example.com`, password: 'password1' }) });
   const cookie = r.headers.get('set-cookie').split(';')[0];
-  const post = async (p, b) => (await fetch(base + '/api/' + p, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(b) })).json();
+  const postRaw = (p, b) => fetch(base + '/api/' + p, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(b) });
+  const post = async (p, b) => (await postRaw(p, b)).json();
   const st = await post('save', { sel });
   const ai = id => async (action, q = {}) => { const r = await fetch(`${base}/a/${st.keys[id]}/${action}?${new URLSearchParams(q)}`); return { code: r.status, text: await r.text() }; };
-  return { post, state: async () => (await fetch(base + '/api/state', { headers: { cookie } })).json(), ai, codes: st.codes };
+  return { post, postRaw, state: async () => (await fetch(base + '/api/state', { headers: { cookie } })).json(), ai, codes: st.codes };
 }
 const ESE = 'boss@company.com(email, calendar, chat, files)';
 
@@ -43,6 +44,32 @@ test('a pasted line fixes an empty report', async () => {
   const r = await t.post('paste', { text: `Saved. COACH-CHECKIN code=${t.codes.chatgpt}; v=3; accounts=${ESE} | Gmail(email); reach=work:code`, id: 'claude' });
   assert.equal(r.results[0].ok, true); assert.equal(r.results[0].id, 'chatgpt');
   assert.equal(r.state.accts.length, 2); assert.equal(r.state.ver.chatgpt, 3); assert.deepEqual(r.state.said.chatgpt, ['work:code']);
+});
+
+test('guided paste only applies the selected agent’s check-in', async () => {
+  const t = await team(['claude', 'grok']);
+  const checkin = code => `**COACH-CHECKIN** **code**=\`${code}\`; v=7; reach=work:code`;
+  const note = `COACH-NOTES code=${t.codes.claude}; notes=seen: This line should be ignored`;
+  const paste = text => t.postRaw('paste', { id: 'claude', text, checkinOnly: true });
+
+  for (const text of [checkin(t.codes.grok), 'COACH-CHECKIN reach=work:code', note]) {
+    const rejected = await paste(text);
+    assert.equal(rejected.status, 400);
+    assert.ok((await rejected.json()).error);
+  }
+  const before = await t.state();
+  assert.deepEqual(before.joined, {});
+  assert.deepEqual(before.trace, []);
+  assert.deepEqual(before.notes, []);
+
+  const accepted = await paste([note, checkin(t.codes.claude), note].join('\n'));
+  assert.equal(accepted.status, 200);
+  const { results, state } = await accepted.json();
+  assert.deepEqual(results.map(({ id, kind, ok }) => ({ id, kind, ok })), [{ id: 'claude', kind: 'CHECKIN', ok: true }]);
+  assert.deepEqual(state.said.claude, ['work:code']);
+  assert.deepEqual(state.notes, []);
+  assert.equal(state.trace.length, 1);
+  assert.equal(state.trace[0].via, 'paste');
 });
 
 test('an untagged account gives no position, a tagged one does', async () => {
