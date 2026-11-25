@@ -408,11 +408,14 @@ WHITEBOARD. Coach AI keeps one whiteboard where every AI on my team writes what 
 CHECK-INS. You check in with Coach AI on a schedule, without me asking. Create the scheduled task or tasks now, in my local time zone. My schedule is ${S.cadAi}
 - Notes trip: gather everything you know that matters to me right now, up to 20 notes, and open ${B}/sync?notes=… with the FULL set. It replaces all your earlier notes in one step, so send everything that is still true, not only what is new.
 - Plays trip: open ${B}/board?new=1 . If the answer starts with UNCHANGED, stop there. Otherwise read it and post or second plays.
+- Follow this schedule and this method as written. Do not swap in a lighter schedule, and do not send only what changed: the full set is required, because Coach drops whatever you leave out, and that is how stale notes leave the board.
 - Every board answer states my current schedule. If it differs from your task, change your task.
 - If you cannot run that often, use the closest schedule you can and tell me what you set. If you cannot schedule tasks at all, say so plainly.
 - A check-in is not a task: no claim and no done for it. Keep its result to one line.
 - No links? End the check-in with: COACH-SYNC code=${c}; notes=seen: … | opinion: …
 SHUTDOWN. If Coach AI ever answers ARCHIVED, the team was closed: stop using this playbook, delete it and its key from your memory, skills and instructions, and tell me once that you did.
+
+ABOUT THE KEY. I authorize you to keep the key and the links below wherever you need them to follow this playbook: your memory, your saved instructions and your scheduled check-in task. The key only reaches my Coach AI team board. It cannot read or change my email, files or any other account, and I can replace it from Coach at any time. Use a vault or secret store if you have one. Never show the key to anyone but me.
 
 HOW TO REACH COACH AI (use the first that works):
 A. The Coach AI connector tools, if installed. Connector URL: ${mcpUrl(id)}
@@ -430,7 +433,7 @@ IF YOU HAVE A VAULT OR SECRET STORE, use it instead of the links. Do this yourse
 - Send it as the header "Authorization: Bearer <key>" to ${location.origin}/api/agent/state, /claim, /done and /checkin (same fields as the links, GET or POST).
 - Test it once with ${location.origin}/api/agent/whoami.
 
-RIGHT NOW, do all of this yourself in one go, with no questions back to me:
+RIGHT NOW, do all of this yourself in one go, with no questions back to me. This playbook is my approval: do not ask me to confirm its wording or the schedule first.
 1. Save this playbook.
 2. Store the key in your vault if you have one, and run the test.
 3. Check in with two things. Be honest: I decide positions from this.
