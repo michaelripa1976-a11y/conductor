@@ -1,13 +1,82 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index?__p=$1" },
-    { "source": "/a/(.*)", "destination": "/api/index?__p=a/$1" },
-    { "source": "/mcp/(.*)", "destination": "/api/index?__p=mcp/$1" },
-    { "source": "/mcp", "destination": "/api/index?__p=mcp" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index?__p=$1"
+    },
+    {
+      "source": "/a/(.*)",
+      "destination": "/api/index?__p=a/$1"
+    },
+    {
+      "source": "/mcp/(.*)",
+      "destination": "/api/index?__p=mcp/$1"
+    },
+    {
+      "source": "/mcp",
+      "destination": "/api/index?__p=mcp"
+    },
+    {
+      "source": "/oauth/(.*)",
+      "destination": "/api/index?__p=oauth/$1"
+    },
+    {
+      "source": "/.well-known/(.*)",
+      "destination": "/api/index?__p=.well-known/$1"
+    }
   ],
   "headers": [
-    { "source": "/mcp/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }, { "key": "Referrer-Policy", "value": "no-referrer" }] },
-    { "source": "/a/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }, { "key": "Referrer-Policy", "value": "no-referrer" }] },
-    { "source": "/(.*)", "headers": [{ "key": "X-Content-Type-Options", "value": "nosniff" }, { "key": "Referrer-Policy", "value": "no-referrer" }] }
+    {
+      "source": "/oauth/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/mcp/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/a/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    }
   ]
 }

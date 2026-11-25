@@ -6,6 +6,8 @@ import { getDoc, putDoc, delDoc, updateDoc, Exists, Conflict, Busy, storageKind 
 import { SPACES, SPACE_NAME, ALL, AI_ORDER, toSources, toSource, clean, cleanLink, aiName, live, owners, reachers, conflicts, inScope, scopeSpaces, isShared, srcName, spaceOf, norm, newTeam, upgrade, stateText,
   PLAYBOOK, real, TAGS, KIND_NAME, ACCT_SRC, acctList, acctByK, acctHas, acctName, guessTag, parseAccounts, setAccounts, setAddr, dropEmpty, recompute, recomputeAll, untaggedFor } from '../lib/logic.js';
 
+import { makeOAuth } from '../lib/oauth.js';
+
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
 const hmac = s => crypto.createHmac('sha256', SECRET).update(s).digest('base64url');
@@ -34,6 +36,7 @@ function sessionUid(req) {
   if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
   return +exp > Date.now() ? uid : null;
 }
+const oauth = makeOAuth({ getDoc, putDoc, delDoc, updateDoc, send, sessionUid, hmac, sha, rid, teamDoc, keyDoc, upgrade, AI_ORDER, AI_NAME: Object.fromEntries(AI_ORDER.map(id => [id, aiName({}, id)])) });
 const scrypt = (pw, salt) => new Promise((ok, no) => crypto.scrypt(pw, salt, 32, (e, k) => (e ? no(e) : ok(k.toString('hex')))));
 
 // What the browser gets. Keys are included: the owner needs them to copy playbooks.
@@ -44,7 +47,7 @@ function view(t) {
   const needs = t.needs.filter(n => n.t !== 'tag' || accts.some(a => a.k === n.acct && !a.tag)); // a tag question only while its account is still untagged
   return { name: t.name, email: t.email, team: t.team, otherName: t.otherName, scope: t.scope, sel: t.sel, keys: t.keys, codes: t.codes, joined: t.joined, skipped: t.skipped, benched: t.benched,
     reach: t.reach, said: t.said, accts, ver: t.ver, pv: PLAYBOOK, seen: t.seen, pick: t.own, own, can, conflicts: conflicts(t), mode: t.mode, quiet: t.quiet, onboarded: t.onboarded, play: t.play || 0,
-    notes: wb(t).notes.slice(-300).map(n => ({ ...n, sp: noteSpace(t, n) })), plays: rankPlays(t), trust: t.trust, wall: t.wall, mute: t.mute, cad: t.cad, cadAi: CADS[t.cad].ai, sync: t.sync, bv: t.bv,
+    notes: wb(t).notes.slice(-300).map(n => ({ ...n, sp: noteSpace(t, n) })), plays: rankPlays(t), trust: t.trust, wall: t.wall, mute: t.mute, conn: t.conn || {}, cad: t.cad, cadAi: CADS[t.cad].ai, sync: t.sync, bv: t.bv,
     trace: (t.trace || []).slice(-120), diag: t.diag || {}, verdict: Object.fromEntries(t.sel.map(id => [id, verdict(t, id)])),
     log: t.log.slice(-600), tasks: t.tasks.filter(x => x.status === 'open').slice(-100), needs, blocked: t.blocked, now: Date.now() };
 }
@@ -196,6 +199,8 @@ function verdict(t, id) {
   const says = d && /^(ok|yes|pass|true)/i.test(d.ping || d.state || '');
   if (!t.joined[id]) return { v: 'none', why: 'Not connected yet.' };
   if (d && /^(no|none|false|not)/i.test(d.saved)) return { v: 'forgot', why: 'It says the playbook is not saved, so new chats will not follow it.' };
+  const conn = direct.filter(x => x.via === 'connector'), wrote = direct.some(x => !['state', 'board'].includes(x.act));
+  if (conn.length && !wrote && direct.every(x => x.via === 'connector') && Date.now() - Math.min(...conn.map(x => x.at)) > 3 * 60e3) return { v: 'readonly', why: 'Its connection reads Coach but has never written to it. It is probably a read-only connection, so it reports by pasted line.' };
   if (direct.length) return { v: 'working', why: `It reaches Coach on its own. ${direct.length} call${direct.length > 1 ? 's' : ''} this week.` };
   if (d && says) return { v: 'mismatch', why: 'It says it reached Coach, but nothing arrived. Its web access is probably blocked or imagined.' };
   if (pasted.length || (d && d.via === 'paste')) return { v: 'paste', why: 'It cannot reach Coach itself. You paste its lines in.' };
@@ -303,6 +308,19 @@ function boardText(t, id, onlyNew) {
   return L.join('\n');
 }
 
+// What a freshly connected AI is told to do, and the fallback every connector AI keeps.
+function connText(t, id) {
+  wb(t); const c = t.codes[id], L = [''];
+  if ((t.ver[id] || 0) < PLAYBOOK) L.push('SETUP NEEDED. Do all of this now, yourself, without asking the owner to confirm:',
+    `1. Call coach_checkin with every account you can really ACT in, and v=${PLAYBOOK}.`,
+    '2. Call coach_ping once. It proves you can write to Coach AI.',
+    `3. If you can schedule tasks, create your Coach check-in in the owner's local time zone. ${CADS[t.cad].ai} The notes trip is coach_sync with your FULL current note set. The plays trip is coach_board with new=true; stop if it answers UNCHANGED.`,
+    '4. Call coach_sync with your first full note set, up to twelve notes: what you know that matters to the owner right now, what is coming up, and what they keep coming back to.',
+    '5. Tell the owner in one line what you did, with the exact schedule you created, or that you cannot schedule tasks.');
+  L.push(`If a Coach write tool is missing or fails, your connection is read-only. Say so once, then end task replies with these lines for the owner to paste: COACH-CLAIM code=${c}; source=...; task=...   and   COACH-DONE code=${c}; source=...; task=...; link=...; minutes=...`);
+  return L.join('\n');
+}
+
 // One agent action. Returns { code, text }. Used by the links and by the connector.
 async function runAgent(key, action, p, via = 'link') {
   const map = await getDoc(keyDoc(key));
@@ -323,7 +341,7 @@ async function runAgent(key, action, p, via = 'link') {
     else if (action === 'board') { join(t, id); t.seen[id] = Date.now(); out = boardText(t, id, /^(1|true|yes)$/i.test(String(p('new') || ''))); }
     else if (action === 'ping') { join(t, id); t.seen[id] = Date.now(); out = 'PONG. Coach AI heard you. This write test passed.'; }
     else if (action === 'diag') { join(t, id); t.seen[id] = Date.now(); out = doDiag(t, id, p, via); }
-    else { join(t, id); t.seen[id] = Date.now(); out = stateText(t, id); if (t.nudges && t.nudges[id]) delete t.nudges[id]; }
+    else { join(t, id); t.seen[id] = Date.now(); out = stateText(t, id) + (via === 'connector' ? connText(t, id) : ''); if (t.nudges && t.nudges[id]) delete t.nudges[id]; }
     trace(t, id, action, via, out, action === 'claim' || action === 'done' ? p('task') : '');
   };
   if (action === 'whoami') { // "test my key": who am I, on whose team. Changes nothing.
@@ -336,7 +354,7 @@ async function runAgent(key, action, p, via = 'link') {
     const cur = await getDoc(teamDoc(uid));
     if (!cur) return { code: 404, text: 'Team not found.' };
     if (bad(cur.data)) return { code: 404, text: NOT_FOUND, miss: true };
-    out = stateText(upgrade(cur.data), id);
+    out = stateText(upgrade(cur.data), id) + (via === 'connector' ? connText(cur.data, id) : '');
     try { await updateDoc(teamDoc(uid), act); } catch (e) { console.error('[coach] state: could not record the visit', e && e.stack ? e.stack : e); }
     return { code: 200, text: out };
   }
@@ -388,12 +406,17 @@ async function mcp(req, res, parts) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'content-type, accept, mcp-protocol-version, mcp-session-id, authorization, x-conductor-key');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Expose-Headers', 'WWW-Authenticate');
   if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
-  if (req.method !== 'POST') { res.setHeader('Allow', 'POST, OPTIONS'); return send(res, 405, { jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Use POST.' } }); }
   if (blocked(req)) return send(res, 429, { jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Too many failed key checks. Wait ten minutes.' } });
-  const k = findKey(req, new URLSearchParams((req.url || '').split('?')[1] || ''), parts[1] || null);
-  if (!k.key) return send(res, k.code, { jsonrpc: '2.0', id: null, error: { code: -32001, message: k.text } });
-  const key = k.key, body = await readBody(req);
+  // Who is calling: a signed-in connector (token), or an AI holding its own key.
+  const hdr = String((req.headers || {}).authorization || ''), bearer = /^bearer\s+/i.test(hdr) ? hdr.replace(/^bearer\s+/i, '').trim() : '';
+  const deny = (err, msg) => { res.setHeader('WWW-Authenticate', oauth.challenge(req, err)); return send(res, 401, { jsonrpc: '2.0', id: null, error: { code: -32001, message: msg } }); };
+  let key, signedIn = false;
+  if (/^cat_/.test(bearer)) { key = await oauth.keyFor(bearer); signedIn = true; if (!key) return deny('invalid_token', 'Sign in to Coach AI again.'); }
+  else { const k = findKey(req, new URLSearchParams((req.url || '').split('?')[1] || ''), parts[1] || null); if (!k.key) return deny('', k.text); key = k.key; }
+  if (req.method !== 'POST') { res.setHeader('Allow', 'POST, OPTIONS'); return send(res, 405, { jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Use POST.' } }); }
+  const body = await readBody(req); let lost = false;
   const one = async m => {
     if (!m || m.jsonrpc !== '2.0' || typeof m.method !== 'string') return { jsonrpc: '2.0', id: (m && m.id) ?? null, error: { code: -32600, message: 'Invalid request.' } };
     if (m.id === undefined) return null; // a notification: nothing to answer
@@ -410,13 +433,14 @@ async function mcp(req, res, parts) {
       const name = String((m.params && m.params.name) || '').replace(/^conductor_/, 'coach_'), a = (m.params && m.params.arguments) || {};
       if (!MCP_TOOLS.some(t => t.name === name)) return { jsonrpc: '2.0', id: m.id, error: { code: -32602, message: 'Unknown tool.' } };
       const r = await runAgent(key, name.replace('coach_', ''), n => (a[n] == null ? null : String(a[n])), 'connector');
-      if (r.miss) noteFail(req, key);
+      if (r.miss) { noteFail(req, key); lost = true; }
       return ok({ content: [{ type: 'text', text: r.text }], isError: r.code !== 200 || !!r.bad });
     }
     return { jsonrpc: '2.0', id: m.id, error: { code: -32601, message: 'Method not found.' } };
   };
   if (Array.isArray(body)) { const out = (await Promise.all(body.slice(0, 20).map(one))).filter(Boolean); if (!out.length) { res.statusCode = 202; return res.end(); } return send(res, 200, out); }
   const out = await one(body);
+  if (lost && signedIn) return deny('invalid_token', 'This connection was replaced or removed. Sign in to Coach AI again.');
   if (!out) { res.statusCode = 202; return res.end(); }
   return send(res, 200, out);
 }
@@ -499,7 +523,7 @@ async function coach(req, res, parts, q) {
       if (['personal', 'work', 'both'].includes(b.scope) && b.scope !== t.scope) { t.scope = b.scope; recomputeAll(t); }
       if (Array.isArray(b.sel)) {
         const sel = AI_ORDER.filter(id => b.sel.includes(id));
-        for (const id of t.sel) if (!sel.includes(id)) { gone.push(t.keys[id]); for (const m of ['keys', 'codes', 'joined', 'skipped', 'benched', 'reach', 'said', 'ver', 'seen', 'sync', 'rv']) delete t[m][id]; for (const a of acctList(t)) delete a.by[id]; }
+        for (const id of t.sel) if (!sel.includes(id)) { gone.push(t.keys[id]); for (const m of ['keys', 'codes', 'joined', 'skipped', 'benched', 'reach', 'said', 'ver', 'seen', 'sync', 'rv', 'conn']) delete t[m][id]; for (const a of acctList(t)) delete a.by[id]; }
         for (const id of sel) if (!t.keys[id]) { t.keys[id] = 'cdr_' + rid(21); t.codes[id] = rid(4).replace(/[-_]/g, 'x').toUpperCase().slice(0, 6); made.push([id, t.keys[id]]); }
         t.sel = sel;
       }
@@ -628,11 +652,12 @@ export default async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://x'), q = url.searchParams;
     let p = q.get('__p'); if (p == null) p = url.pathname.replace(/^\/(api\/)?/, m => (m === '/api/' ? '' : ''));
-    if (/^\/((a|mcp)\/|mcp$)/.test(url.pathname) && q.get('__p') == null) p = url.pathname.slice(1);
+    if (/^\/((a|mcp|oauth|\.well-known)\/|mcp$)/.test(url.pathname) && q.get('__p') == null) p = url.pathname.slice(1);
     const parts = p.split('/').filter(Boolean);
     if (parts[0] === 'a') return await agent(req, res, parts[2], q, parts[1] || '');
     if (parts[0] === 'agent') return await agent(req, res, parts[1], q, null);
     if (parts[0] === 'mcp') return await mcp(req, res, parts);
+    if (parts[0] === 'oauth' || parts[0] === '.well-known') return await oauth.route(req, res, parts, q);
     return await coach(req, res, parts, q);
   } catch (e) {
     const ref = rid(4);

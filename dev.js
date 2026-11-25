@@ -6,7 +6,7 @@ import handler from './api/index.js';
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
 http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
-  if (u.pathname.startsWith('/api/') || u.pathname.startsWith('/a/') || u.pathname.startsWith('/mcp')) return handler(req, res);
+  if (u.pathname.startsWith('/api/') || u.pathname.startsWith('/a/') || u.pathname.startsWith('/mcp') || u.pathname.startsWith('/oauth/') || u.pathname.startsWith('/.well-known/')) return handler(req, res);
   const f = path.join('public', u.pathname === '/' ? 'index.html' : u.pathname);
   try { const d = await fs.readFile(f); res.setHeader('Content-Type', TYPES[path.extname(f)] || 'application/octet-stream'); res.end(d); }
   catch (e) { res.statusCode = 404; res.end('Not found'); }
