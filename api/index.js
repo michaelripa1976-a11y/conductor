@@ -522,8 +522,21 @@ async function coach(req, res, parts, q) {
     const t = await up(t => {
       if (['personal', 'work', 'both'].includes(b.scope) && b.scope !== t.scope) { t.scope = b.scope; recomputeAll(t); }
       if (Array.isArray(b.sel)) {
-        const sel = AI_ORDER.filter(id => b.sel.includes(id));
-        for (const id of t.sel) if (!sel.includes(id)) { gone.push(t.keys[id]); for (const m of ['keys', 'codes', 'joined', 'skipped', 'benched', 'reach', 'said', 'ver', 'seen', 'sync', 'rv', 'conn']) delete t[m][id]; for (const a of acctList(t)) delete a.by[id]; }
+        made.length = 0;
+        gone.length = 0;
+        let selected = b.sel;
+        if (Array.isArray(b.selBase)) {
+          // Apply only the choices the owner changed, even if another tab enrolled a player.
+          const added = b.sel.filter(id => !b.selBase.includes(id));
+          const removed = b.selBase.filter(id => !b.sel.includes(id));
+          selected = [...t.sel.filter(id => !removed.includes(id)), ...added];
+        }
+        const sel = AI_ORDER.filter(id => selected.includes(id));
+        for (const id of t.sel) if (!sel.includes(id)) {
+          gone.push(t.keys[id]);
+          for (const m of ['keys', 'codes', 'joined', 'skipped', 'benched', 'reach', 'said', 'ver', 'seen', 'sync', 'rv', 'conn']) delete t[m]?.[id];
+          for (const a of acctList(t)) delete a.by[id];
+        }
         for (const id of sel) if (!t.keys[id]) { t.keys[id] = 'cdr_' + rid(21); t.codes[id] = rid(4).replace(/[-_]/g, 'x').toUpperCase().slice(0, 6); made.push([id, t.keys[id]]); }
         t.sel = sel;
       }

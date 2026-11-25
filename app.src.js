@@ -56,6 +56,11 @@ function hydrate(st,all){
   S.authed=true;S.name=st.name;S.email=st.email;
   S.conn=st.conn||{};
   if(all){for(const k of OWN)S[k]=st[k];S.wall=st.wall||{};S.mute=st.mute||{};S.cad=st.cad||'light';S.pick=st.pick||{};savedFields=ownerSnapshot()}
+  else if(savedFields.sel === JSON.stringify(S.sel)) {
+    // OAuth can enroll a player while this tab is open. Keep local edits until their save returns.
+    S.sel = st.sel;
+    savedFields.sel = JSON.stringify(st.sel);
+  }
   for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];S.accts=st.accts||[];S.notes=st.notes||[];S.plays=st.plays||[];S.trust=st.trust||{};S.trace=st.trace||[];S.diag=st.diag||{};S.verdict=st.verdict||{};S.said=st.said||{};S.ver=st.ver||{};S.pv=st.pv||0;S.sync=st.sync||{};S.cadAi=st.cadAi||'';
   for(const id of Object.keys(st.joined))delete S.skipped[id];
   S.skew=Date.now()-st.now;S.log=st.log.slice().reverse();
@@ -70,6 +75,7 @@ async function saveNow(){
   const changed=OWN.filter(k=>snapshot[k]!==savedFields[k]);
   if(!changed.length)return;
   const body=Object.fromEntries(changed.map(k=>[k,S[k]]));
+  if(changed.includes('sel')) body.selBase=JSON.parse(savedFields.sel);
   saving=api('save',body).then(state=>{
     for(const k of changed)savedFields[k]=snapshot[k];
     hydrate(state,false);
@@ -164,15 +170,36 @@ const FORGET='Forget Coach AI. Delete the Coach AI playbook and its key from you
 const direct=id=>S.trace.some(x=>x.id===id&&x.via!=='paste');
 const setupText=id=>CONN[id]?mcpUrl(id):playbookText(id);
 
-/* Native connector setup for the two agents verified on Coach. */
+/* Native connector setup for the agents tested with Coach. */
 const GUIDED_CONNECT = {
   claude: { name: 'Claude Duet' },
-  grok: { name: 'Grok Bot' }
+  grok: { name: 'Grok Bot' },
+  gemini: {
+    name: 'Gemini',
+    setupUrl: 'https://gemini.google.com/customize/connectors',
+    setupCopy: mcpUrl('gemini'),
+    setupLabel: 'Copy address and open Gemini',
+    setupHint: 'In Gemini, choose + Custom and paste the Coach address.',
+    checkinUrl: 'https://gemini.google.com/app',
+    checkinLabel: 'Copy message and open Gemini',
+    checkinHint: 'In a Gemini chat, type @Coach, select Coach AI, then paste and send the message.'
+  },
+  muse: {
+    name: 'Muse',
+    setupUrl: 'https://muse.ai/',
+    setupCopy: `Create a custom connector named Coach AI for ${mcpUrl('muse')}. Use OAuth and show me the sign-in button.`,
+    setupLabel: 'Copy message and open Muse',
+    setupHint: 'Paste the setup message into a Muse chat and send it.',
+    checkinLabel: 'Copy check-in message',
+    checkinHint: 'Paste the check-in message in the Muse chat where you connected Coach.'
+  }
 };
 const grokInstallMessage = `Add a custom connector named Coach AI using ${mcpUrl('grok')} and show me the sign-in button.`;
 const guidedCheckinMessage = 'Use the Coach AI connector to read my team state and send your first check-in with the accounts and sources you can act on.';
 
 function guidedOpenUrl(id, checkin) {
+  const guide = GUIDED_CONNECT[id];
+  if (guide.setupUrl) return checkin ? guide.checkinUrl : guide.setupUrl;
   if (id === 'grok') {
     const prompt = checkin ? guidedCheckinMessage : grokInstallMessage;
     return 'https://cursor.com/grok-bot/link/v1/prompt?text=' + encodeURIComponent(prompt);
@@ -194,12 +221,15 @@ function guidedStatus(id, previousApproval = 0) {
 }
 
 function mountGuidedConnect(host, id, { onDone, onSkip, onCancel, reconnect = false }) {
-  const name = GUIDED_CONNECT[id].name;
+  const guide = GUIDED_CONNECT[id], name = guide.name;
   let previousApproval = reconnect ? Number(S.conn?.[id]?.at || 0) : 0;
   let botTarget = '', opened = false, copiedText = '', failedText = '';
   let disposed = false, busy = false, offline = false, lastView = '', timer;
   const button = (action, label, style = 'btn') => `<button type="button" class="${style}" data-guide="${action}">${label}</button>`;
   const link = (checkin, label) => `<a class="btn" data-guide="launch" target="_blank" rel="noopener noreferrer" href="${esc(guidedOpenUrl(id, checkin))}">${label}</a>`;
+  const checkinPrompt = (id === 'muse' || id === 'gemini')
+    ? 'Use the Coach AI connector to run coach_checkin once with the accounts and sources you can currently act on. Show me Coach’s reply.'
+    : guidedCheckinMessage;
   function draw() {
     const status = guidedStatus(id, previousApproval);
     const key = [status, botTarget, opened, copiedText, failedText, offline].join('/');
@@ -208,7 +238,7 @@ function mountGuidedConnect(host, id, { onDone, onSkip, onCancel, reconnect = fa
     const checkin = status === 'approved' || status === 'reached';
     // On a resumed visit the original Bot may have been one the owner chose manually.
     const manual = id === 'grok' && (botTarget === 'other' || (checkin && botTarget !== 'primary'));
-    const prompt = checkin ? guidedCheckinMessage : grokInstallMessage;
+    const prompt = checkin ? checkinPrompt : guide.setupCopy || grokInstallMessage;
     let title, detail, action, alternate = '', message = '';
     if (status === 'reported') {
       title = `${name} checked in`;
@@ -216,7 +246,13 @@ function mountGuidedConnect(host, id, { onDone, onSkip, onCancel, reconnect = fa
       action = button('done', 'Continue');
     } else if (checkin) {
       title = status === 'reached' ? `${name} reached Coach` : `${name} approved`;
-      if (id === 'claude') {
+      if (guide.checkinHint) {
+        detail = id === 'gemini' && status === 'approved'
+          ? 'Click Connect to save Coach AI in Gemini. In chat, type @Coach, select Coach AI, then paste and send the message.'
+          : guide.checkinHint;
+        message = `<p class="guide-message">${esc(prompt)}</p>`;
+        action = guide.checkinUrl ? link(true, guide.checkinLabel) : button('copy', guide.checkinLabel);
+      } else if (id === 'claude') {
         detail = 'Send the check-in message in Claude Duet.';
         message = `<p class="guide-message">${esc(prompt)}</p>`;
         action = link(true, 'Copy message and open Duet');
@@ -228,6 +264,11 @@ function mountGuidedConnect(host, id, { onDone, onSkip, onCancel, reconnect = fa
         detail = 'Send the prefilled check-in message in your primary Bot’s chat.';
         action = link(true, 'Open Grok Bot');
       }
+    } else if (guide.setupUrl) {
+      title = opened ? `Finish connecting in ${name}` : `Connect ${name}`;
+      detail = guide.setupHint;
+      action = link(false, guide.setupLabel);
+      if (failedText === prompt) message = `<p class="guide-message">${esc(prompt)}</p>`;
     } else if (manual) {
       title = 'Open your Bot’s chat';
       detail = 'Send this message to the Bot you want to connect.';
@@ -242,8 +283,9 @@ function mountGuidedConnect(host, id, { onDone, onSkip, onCancel, reconnect = fa
     if (id === 'grok' && status !== 'reported') {
       alternate = manual ? button('default', 'Use my primary Bot', 'lnk') : button('manual', 'Use a different Bot', 'lnk');
     }
-    if (message && copiedText === prompt) detail = 'Message copied. Paste it into your agent’s chat and send it.';
-    if (message && failedText === prompt) detail = 'Select and copy the message below, then send it in your agent’s chat.';
+    if (checkin && id === 'muse' && copiedText === prompt) detail = 'Message copied. Switch to your Muse chat, paste and send.';
+    else if (message && copiedText === prompt && !guide.setupUrl) detail = 'Message copied. Paste it into your agent’s chat and send it.';
+    if (failedText === prompt) detail = (guide.setupUrl ? detail + ' ' : '') + 'Select and copy the text below.';
     const recovery = checkin ? button('retry', 'Reconnect', 'lnk') : '';
     const options = `<details class="guide-options"><summary>More options</summary>${recovery}${button('paste', 'Paste a check-in', 'lnk')}</details>`;
     host.innerHTML = `<div class="hero"><div class="pass">${coach(90)}<span class="to">${av(id)}</span></div></div>
@@ -265,14 +307,15 @@ function mountGuidedConnect(host, id, { onDone, onSkip, onCancel, reconnect = fa
     switch (target.dataset.guide) {
       case 'launch':
         if (id === 'grok') botTarget = 'primary';
-        if (status !== 'connect' && id === 'claude') void copyMessage(guidedCheckinMessage);
+        if (status === 'connect' && guide.setupCopy) void copyMessage(guide.setupCopy);
+        if (status !== 'connect' && id !== 'grok') void copyMessage(checkinPrompt);
         opened = true;
         // Let the browser follow the link before replacing its element.
         setTimeout(() => { if (!disposed && host.isConnected) draw(); }, 0);
         return;
       case 'manual': botTarget = 'other'; break;
       case 'default': botTarget = 'primary'; break;
-      case 'copy': void copyMessage(status === 'connect' ? grokInstallMessage : guidedCheckinMessage); return;
+      case 'copy': void copyMessage(status === 'connect' ? grokInstallMessage : checkinPrompt); return;
       case 'retry': previousApproval = Number(S.conn?.[id]?.at || 0); opened = false; break;
       case 'paste': pasteSheet(id, () => { cleanup(); onDone(); }, true); return;
       case 'done': cleanup(); onDone(); return;
@@ -365,7 +408,14 @@ const V={
   $('#go').onclick=async()=>{if(!ok())return;const b=$('#go');b.disabled=true;b.textContent='Saving…';await saveNow();if(S.sel.every(id=>S.keys[id])){build();S.i=S.steps.findIndex(x=>x.t==='pick');next()}else{b.disabled=false;b.textContent='Try again'}}},
  book(el,st){const id=st.id,n=N(id),books=S.steps.filter(step=>step.t==='book'),k=books.indexOf(st),last=k===books.length-1;let stage=S.joined[id]?3:1,shown=told(id);
   const mine=()=>S.accts.filter(a=>a.by.includes(id));
-  const onward=()=>{build();go(S.steps.findIndex(x=>x.t==='book'&&x.id===id)+1)}; // accounts arrive with the report, so the path ahead is laid out again
+  const onward=async()=>{
+    await pull(); // Include accounts and players added in the other app before choosing the next step.
+    if(S.steps[S.i]!==st)return;
+    build();
+    const current=S.steps.findIndex(x=>x.t==='book'&&x.id===id);
+    if(current<0)return enter();
+    go(current+1);
+  };
   if(GUIDED_CONNECT[id] && (S.conn[id] || !S.joined[id] || !told(id))){
     el.innerHTML=shell('<div id="guided-connect" class="guided-connect"></div>',st);
     mountGuidedConnect($('#guided-connect',el),id,{

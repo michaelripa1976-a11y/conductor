@@ -38,6 +38,20 @@ test('template text is not a report', async () => {
   assert.ok(s.joined.chatgpt); assert.deepEqual(s.said.chatgpt, []); assert.equal(s.accts.length, 0);
 });
 
+test('a stale player picker preserves other enrollments and removals', async () => {
+  const selBase = ['claude', 'gemini', 'muse'];
+  const t = await team(selBase);
+  const newer = await t.post('save', { selBase, sel: ['claude', 'grok', 'muse'] });
+  const report = await t.post('paste', { id: 'grok', checkinOnly: true, text: `COACH-CHECKIN code=${newer.codes.grok}; v=7; reach=work:code` });
+  assert.equal(report.results[0].ok, true);
+
+  // The older tab adds ChatGPT and removes Muse while still displaying the original roster.
+  const final = await t.post('save', { selBase, sel: ['chatgpt', 'claude', 'gemini'] });
+  assert.deepEqual(final.sel, ['chatgpt', 'claude', 'grok']);
+  assert.deepEqual(final.said.grok, ['work:code']);
+  assert.equal(final.codes.grok, newer.codes.grok);
+});
+
 test('a pasted line fixes an empty report', async () => {
   const t = await team(['claude', 'chatgpt']);
   await t.ai('chatgpt')('checkin', { reach: 'LIST' });
