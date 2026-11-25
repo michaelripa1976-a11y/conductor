@@ -1,6 +1,8 @@
 # Assembles public/index.html from the approved demo's styles and helpers plus app.src.js.
 import re
-demo=open('/home/claude/pw/index.html').read()
+import os
+HERE=os.path.dirname(os.path.abspath(__file__))
+demo=open(os.path.join(HERE,'ui','base.html')).read()
 css=re.search(r'<style>(.*?)</style>',demo,re.S).group(1)
 helpers='\n'.join(l for l in demo.split('\n') if l.startswith(('const IC=','const ic=','const coach=','const RM=','function confetti','function ding','function whistle')))
 extra=r'''
