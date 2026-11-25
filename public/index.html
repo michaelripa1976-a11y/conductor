@@ -343,13 +343,13 @@ async function tagAcct(a,v,addr){hydrate(await api('acct',{k:a.k,tag:v,...(addr?
 
 /* ---------- server sync ---------- */
 async function api(path,body){const r=await fetch('/api/'+path,body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{});let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw Object.assign(new Error(j.error||'Something went wrong. Try again.'),{status:r.status});return j}
-const OWN=['scope','sel','skipped','benched','pick','mode','team','otherName','quiet','onboarded','play','wall','mute'];
+const OWN=['scope','sel','skipped','benched','pick','mode','team','otherName','quiet','onboarded','play','wall','mute','cad'];
 const ownJSON=()=>JSON.stringify(OWN.map(k=>S[k]));
 let sent='';
 function hydrate(st,all){
   S.authed=true;S.name=st.name;S.email=st.email;
-  if(all){for(const k of OWN)S[k]=st[k];S.wall=st.wall||{};S.mute=st.mute||{};S.pick=st.pick||{};sent=ownJSON()}
-  for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];S.accts=st.accts||[];S.notes=st.notes||[];S.plays=st.plays||[];S.trust=st.trust||{};S.trace=st.trace||[];S.diag=st.diag||{};S.verdict=st.verdict||{};S.said=st.said||{};S.ver=st.ver||{};S.pv=st.pv||0;
+  if(all){for(const k of OWN)S[k]=st[k];S.wall=st.wall||{};S.mute=st.mute||{};S.cad=st.cad||'light';S.pick=st.pick||{};sent=ownJSON()}
+  for(const k of ['keys','codes','joined','reach','seen','needs','tasks'])S[k]=st[k];S.accts=st.accts||[];S.notes=st.notes||[];S.plays=st.plays||[];S.trust=st.trust||{};S.trace=st.trace||[];S.diag=st.diag||{};S.verdict=st.verdict||{};S.said=st.said||{};S.ver=st.ver||{};S.pv=st.pv||0;S.sync=st.sync||{};S.cadAi=st.cadAi||'';
   for(const id of Object.keys(st.joined))delete S.skipped[id];
   S.skew=Date.now()-st.now;S.log=st.log.slice().reverse();
   if(S.known)for(const w of S.log.filter(w=>!S.known.has(w.k)).reverse())S.fresh.push(w);
@@ -379,7 +379,7 @@ EVERY TASK, in this order:
 4. Do the work. A claim is never approval to send or delete anything.
 5. Report it done. Then end your reply with "Coach: reported".
 If a board is PAUSED or OFF, do not act on it. Tell me instead.
-Jobs that repeat on a schedule: report one summary a day, not every run.
+Jobs that repeat on a schedule: claim and report on every run, the same as any other task.
 TRACE. End every task reply with one line: Coach trace: state=…; claim=…; done=… . For each step write ok, or the exact error you got. Never write ok for a step you did not really do.
 DIAGNOSTICS. When I say "Run Coach diagnostics", answer these honestly, then send them: (1) saved = is this playbook saved for future chats, and where; (2) state = open the state link: ok or the exact error; (3) ping = open ${B}/ping : ok or the exact error; (4) tools = which you have of web, connector, memory, vault, files, schedule; (5) note = anything that stopped you following this playbook. If the ping worked, open ${B}/diag?saved=…&state=…&ping=…&tools=…&note=… . Either way end your reply with: COACH-DIAG code=${c}; saved=…; state=…; ping=…; tools=…; note=…
 WHITEBOARD. Coach AI keeps one whiteboard where every AI on my team writes what it knows about me, so together you can see what none of you sees alone.
@@ -389,6 +389,13 @@ WHITEBOARD. Coach AI keeps one whiteboard where every AI on my team writes what 
 - Post a play: when you see something I should do, above all where your knowledge meets another AI's note, open ${B}/play?task=…&cmd=…&to=AI&from=KEYS . cmd is the exact instruction I can hand to the AI that should do it. If an open play already says it, open ${B}/play?second=KEY instead of posting a duplicate.
 - Never write passwords, account or card numbers, health details or other people's private information. Leave out anything from an account that looks company-managed unless I said it is fine.
 - No links? End your reply with: COACH-NOTES code=${c}; notes=seen: … | opinion: …   and/or   COACH-PLAY code=${c}; task=…; cmd=…; to=…; from=…
+CHECK-INS. You check in with Coach AI on a schedule, without me asking. Create the scheduled task or tasks now, in my local time zone. My schedule is ${S.cadAi}
+- Notes trip: gather everything you know that matters to me right now, up to 20 notes, and open ${B}/sync?notes=… with the FULL set. It replaces all your earlier notes in one step, so send everything that is still true, not only what is new.
+- Plays trip: open ${B}/board?new=1 . If the answer starts with UNCHANGED, stop there. Otherwise read it and post or second plays.
+- Every board answer states my current schedule. If it differs from your task, change your task.
+- If you cannot run that often, use the closest schedule you can and tell me what you set. If you cannot schedule tasks at all, say so plainly.
+- A check-in is not a task: no claim and no done for it. Keep its result to one line.
+- No links? End the check-in with: COACH-SYNC code=${c}; notes=seen: … | opinion: …
 SHUTDOWN. If Coach AI ever answers ARCHIVED, the team was closed: stop using this playbook, delete it and its key from your memory, skills and instructions, and tell me once that you did.
 
 HOW TO REACH COACH AI (use the first that works):
@@ -414,8 +421,9 @@ RIGHT NOW, do all of this yourself in one go, with no questions back to me:
    accounts = every account you are signed in to and can really ACT in (send, change, create), not just read. Write each as ADDRESS(what it holds) and separate them with |. Example: me@company.com(email, calendar, files) | Gmail(email). What it holds: email, calendar, chat, files. Give the address when you can see it. If you cannot, give the service name. Do NOT say whether an account is personal or work. I tag each one myself.
    reach = any other source from the list above that you can act on and that is not one of those accounts (code, social, payments and so on).
    If you cannot open a link with your own values put into it, do NOT open the check-in link as written. Skip the link and use the line in step 4.
-4. Interview. Add up to six whiteboard notes answering: what do you know that matters to me right now, what is coming up that I should not miss, and what do I keep coming back to? Mark each seen or opinion.
-5. Reply with one line: where you saved it, how you reach Coach AI, and what the check-in answered. If you could not open the note link, add a COACH-NOTES line with your interview notes. Then ALWAYS end your reply with this line, filled in with the same real values, even if the link worked:
+4. Schedule your Coach check-ins as described under CHECK-INS.
+5. Interview. Send your first full note set with the sync link, up to twelve notes answering: what do you know that matters to me right now, what is coming up that I should not miss, and what do I keep coming back to? Mark each seen or opinion.
+6. Reply with: where you saved it, how you reach Coach AI, what the check-in answered, and the exact check-in schedule you created (or that you cannot schedule tasks). If you could not open the sync link, add a COACH-SYNC line with your interview notes. Then ALWAYS end your reply with this line, filled in with the same real values, even if the link worked:
 COACH-CHECKIN code=${c}; v=${S.pv}; accounts=...; reach=...`}
 const VERD={working:['Working','g'],paste:['Paste-back only','y'],forgot:['Forgot the playbook','r'],mismatch:['Says yes, nothing arrives','r'],silent:['No word since joining','y'],none:['Not connected','n']};
 const vd=id=>S.verdict[id]||{v:'none',why:''};
@@ -610,12 +618,19 @@ const onBoard=()=>S.notes.filter(n=>!n.pend&&!n.gone);
 const rightSwitch=()=>DESK.matches?`<div class="seg" role="group" aria-label="Right panel">${[['plan','Plan'],['done','Done']].map(([k,t])=>`<button data-r="${k}" aria-pressed="${S.right===k}" style="${S.right===k?'background:var(--ink);color:#fff':''}">${t}</button>`).join('')}</div>`:'';
 function wireRight(el){$$('[data-r]',el).forEach(b=>b.onclick=()=>{S.right=b.dataset.r;render(true)})}
 const tagsOf=n=>`<span class="tag ${n.kind==='opinion'?'o':'f'}">${n.kind==='opinion'?'OPINION':'SEEN'}</span>${n.sp?`<span class="tag ${n.sp==='work'?'w':'p'}">${n.sp.toUpperCase()}</span>`:''}${n.priv?'<span class="tag x">HIDDEN</span>':''}`;
+const CADN={light:['Light','4 check-ins a day','4 runs a day per AI'],standard:['Standard','Every hour, 8 to 6','22 runs a day per AI'],live:['Live','Every hour, day and night','48 runs a day per AI']};
+function cadSheet(){const tok=Math.round((onBoard().reduce((a,n)=>a+n.x.length+40,0)+900)/4/50)*50;
+  const sh=sheet(`<div class="big">${coach(70)}</div><h1>How often do your AIs check in?</h1><p>At each check-in an AI refreshes its notes and looks for plays. Runs use that AI's own allowance, so more check-ins means more usage.</p><div class="list">${Object.entries(CADN).map(([k,v])=>`<button class="btn sm ${S.cad===k?'':'alt'}" data-c="${k}" aria-pressed="${S.cad===k}" style="margin-bottom:8px">${v[0]}: ${v[1]}<small style="display:block;font-weight:700;opacity:.8">${v[2]}</small></button>`).join('')}</div><p class="note">Reading the board now costs an AI about ${tok.toLocaleString()} tokens. An unchanged board costs almost nothing to check.</p>`);
+  $$('[data-c]',sh).forEach(b=>b.onclick=()=>{S.cad=b.dataset.c;saveNow();sh.close();render(true);toast('Saved. Each AI picks up the new schedule at its next check-in.')})}
 function planView(el){const P=S.plays,pend=pending(),who=[...new Set(pend.map(n=>n.id))];
   el.innerHTML=`${rightSwitch()}<div class="padh">${DESK.matches?'':coach(42)}<h1>${DESK.matches?'':'<small>COACH AI</small>'}Game plan</h1><button class="chipb" id="wbb">Whiteboard ${onBoard().length}</button></div>
+   <div class="two" style="margin:0 0 12px"><button class="btn sm alt" id="gp">Get plays</button><button class="btn sm alt" id="cad">Check-ins: ${CADN[S.cad||'light'][0]}</button></div>
    <div class="cards">${who.map(id=>`<button class="playc rev" data-rev="${id}"><div class="who">${av(id)}<span>${N(id)} has ${pend.filter(n=>n.id===id).length} note${pend.filter(n=>n.id===id).length>1?'s':''} for the whiteboard</span></div><h3>Review what ${N(id)} knows about you.</h3></button>`).join('')}
    ${P.map((p,i)=>`<div class="playc ${p.by.length>1?'top':''}" style="animation-delay:${i*.08}s"><div class="who">${p.by.map(av).join('')}<span>${p.by.length>1?`${p.by.length} AIs point at this`:`From ${N(p.by[0])}`}</span></div><h3>${esc(p.h)}</h3><div class="r"><button class="go" data-go="${p.k}">Send to ${N(p.to)}</button><button data-why="${p.k}">Why</button><button data-skip="${p.k}">Not now</button></div></div>`).join('')}
-   ${who.length||P.length?'':`<p class="note" style="margin-top:26px">${onBoard().length?'No plays yet. They appear when an AI reads the whiteboard and spots something for you.':'Nothing yet. Each AI adds what it knows when you give it the new playbook.'}</p>`}</div>${navHTML()}`;
+   ${who.length||P.length?'':`<p class="note" style="margin-top:26px">${onBoard().length?'No plays yet. Tap Get plays and paste the command into any of your AIs, or wait for the next check-in.':'Nothing yet. Each AI adds what it knows when you give it the new playbook.'}</p>`}</div>${navHTML()}`;
   $('#wbb',el).onclick=boardSheet;
+  $('#gp',el).onclick=()=>{copy('Read the Coach whiteboard now and post or second any plays you see for me. Then tell me in one line what you posted.');toast('Copied. Paste it into any of your AIs.')};
+  $('#cad',el).onclick=cadSheet;
   $$('[data-rev]',el).forEach(b=>b.onclick=()=>reviewSheet(b.dataset.rev));
   const play=k=>S.plays.find(p=>p.k===k);
   $$('[data-go]',el).forEach(b=>b.onclick=()=>{const p=play(b.dataset.go),sh=sheet(`<div class="big">${coach(70)}${av(p.to)}</div><h1>Send this to ${N(p.to)}.</h1><div class="list"><div>${esc(p.cmd)}</div></div><p>${N(p.to)} claims it, does it, and reports back to Coach.</p><button class="btn">Copy the command</button>`);
@@ -638,10 +653,14 @@ function boardSheet(){let f='all';
   draw()}
 
 /* ---------- Team ---------- */
-const status=id=>S.benched[id]?'On the bench':!S.joined[id]?'Not connected yet':S.joined[id]&&['forgot','mismatch'].includes(vd(id).v)?VERD[vd(id).v][0]+'. Tap to see':!told(id)?'Report came back empty. Tap to fix':stale(id)?'Needs the new playbook. Tap to update':`Last heard from ${ago(S.seen[id]||S.joined[id])}`;
+const SLOTS={light:[8,12,16,20],standard:[8,9,10,11,12,13,14,15,16,17,18],live:[...Array(24).keys()]};
+const lastSlot=()=>{const d=new Date(Date.now()-20*60e3);d.setMinutes(0,0,0);for(let i=0;i<48;i++){if(SLOTS[S.cad||'light'].includes(d.getHours()))return d.getTime();d.setHours(d.getHours()-1)}return 0};
+const missed=id=>!!S.sync[id]&&!S.benched[id]&&(S.seen[id]||0)<lastSlot()-5*60e3;
+const slotName=()=>new Date(lastSlot()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const status=id=>S.benched[id]?'On the bench':!S.joined[id]?'Not connected yet':S.joined[id]&&['forgot','mismatch'].includes(vd(id).v)?VERD[vd(id).v][0]+'. Tap to see':!told(id)?'Report came back empty. Tap to fix':stale(id)?'Needs the new playbook. Tap to update':missed(id)?`Missed its ${slotName()} check-in. Last heard ${ago(S.seen[id])}`:`Last heard from ${ago(S.seen[id]||S.joined[id])}`;
 function teamView(el){
   el.innerHTML=`<div class="padh"><h1>Team</h1><button class="chipb" id="acct">Account</button></div>
-   <div class="rows" id="tl">${S.sel.map(id=>`<button class="row ${S.joined[id]&&!S.benched[id]?'':'off'}" data-id="${id}"><span class="a">${av(id)}<i class="dot ${S.benched[id]?'':S.joined[id]?(quietAI()===id||!told(id)||stale(id)?'q':'g'):''}"></i></span><span class="t"><b>${N(id)}</b><small>${status(id)}</small></span><span class="cnt">${S.log.filter(w=>w.id===id).length}</span></button>`).join('')}</div>
+   <div class="rows" id="tl">${S.sel.map(id=>`<button class="row ${S.joined[id]&&!S.benched[id]?'':'off'}" data-id="${id}"><span class="a">${av(id)}<i class="dot ${S.benched[id]?'':S.joined[id]?(quietAI()===id||!told(id)||stale(id)||missed(id)?'q':'g'):''}"></i></span><span class="t"><b>${N(id)}</b><small>${status(id)}</small></span><span class="cnt">${S.log.filter(w=>w.id===id).length}</span></button>`).join('')}</div>
    <div class="two"><button class="btn sm alt" id="add">+ Add an AI</button><button class="btn sm alt" id="acs">Accounts${untagged().length?` (${untagged().length})`:''}</button></div>${navHTML()}`;
   $('#acs',el).onclick=acctsSheet;
   $$('#tl .row',el).forEach(r=>r.onclick=()=>{const id=r.dataset.id;S.joined[id]&&!told(id)&&!S.benched[id]?emptySheet(id):aiSheet(id)});
