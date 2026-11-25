@@ -16,6 +16,22 @@ extra=r'''
 .orb img{width:44px;height:44px}
 .orbw{position:absolute;left:50%;top:50%;margin:-29px 0 0 -29px;width:58px;height:58px;transition:transform .8s cubic-bezier(.3,1.35,.5,1)}
 .orbw .orb{position:relative;left:auto;top:auto;display:grid}
+.orbw .orb{background:none;box-shadow:none;border-radius:0;animation-duration:var(--d,1.2s);animation-timing-function:ease-in-out;animation-iteration-count:infinite;transform-origin:50% 100%}
+.orbw .orb img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 3px 0 rgba(36,27,77,.12))}
+.orbw::after{content:"";position:absolute;left:50%;bottom:-7px;width:34px;height:7px;margin-left:-17px;border-radius:50%;background:rgba(36,27,77,.13);animation:gshadow var(--d,1.2s) ease-in-out infinite}
+.orb.w0{animation-name:jack}.orb.w1{animation-name:squat}.orb.w2{animation-name:jog}.orb.w3{animation-name:stretch}.orb.w4{animation-name:rope}.orb.w5{animation-name:twist}
+.orb.cheer{animation:cheer .55s ease-in-out infinite!important}
+@keyframes jack{0%,100%{transform:none}20%{transform:translateY(2px) scale(1.08,.9)}55%{transform:translateY(-16px) scale(1.2,.94)}80%{transform:translateY(0) scale(.96,1.04)}}
+@keyframes squat{0%,100%{transform:none}45%,60%{transform:scale(1.2,.68)}80%{transform:scale(.95,1.08)}}
+@keyframes jog{0%,100%{transform:rotate(-12deg)}25%{transform:translateY(-8px) rotate(0)}50%{transform:rotate(12deg)}75%{transform:translateY(-8px) rotate(0)}}
+@keyframes stretch{0%,100%{transform:none}25%{transform:rotate(-24deg) scaleY(1.06)}50%{transform:scaleY(1.12)}75%{transform:rotate(24deg) scaleY(1.06)}}
+@keyframes rope{0%,100%{transform:scale(1.1,.88)}50%{transform:translateY(-20px) scale(.94,1.08)}}
+@keyframes twist{0%,100%{transform:none}30%{transform:translateY(-12px) rotateY(180deg)}60%{transform:translateY(-12px) rotateY(360deg)}80%{transform:scale(1.1,.9) rotateY(360deg)}}
+@keyframes cheer{0%,100%{transform:none}50%{transform:translateY(-10px) scale(1.06)}}
+@keyframes gshadow{50%{transform:scale(.6);opacity:.5}}
+.ai[aria-pressed="true"] img{animation:jack 1s ease-in-out infinite;transform-origin:50% 100%}.ai[aria-pressed="true"]:nth-child(3n) img{animation-name:squat;animation-delay:.2s}.ai[aria-pressed="true"]:nth-child(3n+1) img{animation-name:rope;animation-duration:.7s}
+.sheet .big img{animation:stretch 2.2s ease-in-out infinite;transform-origin:50% 100%}
+.choice button img{animation:jog .9s ease-in-out infinite;transform-origin:50% 100%}.choice button:nth-of-type(2) img{animation-delay:.3s}.choice button.win img{animation:cheer .55s ease-in-out infinite}
 .btn[disabled]#go{opacity:1;background:var(--pri);box-shadow:0 6px 0 var(--priD)}.to img{width:80px;height:80px;object-fit:contain}
 .ais{grid-template-columns:repeat(3,1fr);gap:9px}
 .ai{border-radius:20px;font-size:14px;gap:2px;padding:4px}.ai img{width:52px;height:52px}.ai .avl{width:52px;height:52px}
