@@ -321,16 +321,8 @@ function help(id){const n=N(id),rows=CONN[id]?[ADD[id],'On the Coach sign-in pag
 function pasteSheet(id,after,checkinOnly=false){const sh=sheet(`<div class="big">${coach(84)}</div><h1>Paste the AI's reply.</h1><p>The whole reply is fine. Coach finds the line that starts with COACH-.</p><textarea id="pt" rows="4" aria-label="The AI's reply" placeholder="${checkinOnly?'COACH-CHECKIN code=…; accounts=…; reach=…':'COACH-DONE code=…; source=…; task=…'}"></textarea><p id="pe" class="err" role="alert"></p><button class="btn">Hand it to Coach</button>`);
   $('.btn',sh).onclick=async()=>{
     const field=$('#pt',sh),error=$('#pe',sh);
-    let text=field.value;
-    if(checkinOnly){
-      const line=text.match(/(?:COACH|CONDUCTOR)[-_ ]CHECKIN\b[^\r\n]*/i);
-      if(!line){error.textContent='Paste the check-in line from this agent.';return}
-      const code=line[0].match(/\bcode\s*=\s*([a-z0-9_-]+)/i)?.[1]?.toUpperCase();
-      if(code && code!==S.codes[id]){error.textContent='This check-in belongs to another agent.';return}
-      text=line[0];
-    }
     try{
-      const r=await api('paste',{text,id});hydrate(r.state,false);
+      const r=await api('paste',{text:field.value,id,checkinOnly});hydrate(r.state,false);
       const bad=r.results.find(x=>!x.ok);
       if(bad){error.textContent=bad.msg;return}
       sh.close();toast(esc(r.results[0].msg));after&&after();

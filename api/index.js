@@ -618,12 +618,21 @@ async function coach(req, res, parts, q) {
   }
   if (action === 'paste') { // a chat AI's reply, pasted in by the owner
     const text = String(b.text || '').slice(0, 20000), results = [];
-    const lines = [...text.matchAll(/(?:COACH|CONDUCTOR)[-_ ](CHECKIN|CLAIM|DONE|DIAG|NOTES|SYNC|RETIRE|PLAY)\b[:\s]*([^\n\r]*)/gi)];
-    if (!lines.length) return send(res, 400, { error: 'No report found in that text. It should contain a line starting with COACH-.' });
+    const checkinOnly = b.checkinOnly === true;
+    const lines = checkinOnly
+      ? [text.match(/(?:COACH|CONDUCTOR)[-_ ](CHECKIN)\b[:\t ]*([^\n\r]*)/i)].filter(Boolean)
+      : [...text.matchAll(/(?:COACH|CONDUCTOR)[-_ ](CHECKIN|CLAIM|DONE|DIAG|NOTES|SYNC|RETIRE|PLAY)\b[:\s]*([^\n\r]*)/gi)];
+    if (!lines.length) return send(res, 400, { error: checkinOnly ? 'Paste the check-in line from this agent.' : 'No report found in that text. It should contain a line starting with COACH-.' });
+    let checkinError;
     const t = await up(t => {
+      results.length = 0;
       for (const m of lines.slice(0, 20)) {
-        const kind = m[1].toUpperCase(), p = parsePairs(m[2].replace(/[*`]/g, ''));
+        const kind = m[1].toUpperCase(), p = parsePairs(m[2].replace(/[*`]/g, '').replace(/^\s*:\s*/, ''));
         let id = t.sel.find(x => t.codes[x] && t.codes[x] === String(p.code || '').toUpperCase().trim());
+        if (checkinOnly && (!id || id !== b.id)) {
+          checkinError = p.code ? 'This check-in belongs to another agent or has an incorrect code.' : 'Paste the full check-in line, including its code.';
+          return false;
+        }
         if (!id && t.sel.includes(b.id)) id = b.id;
         if (!id) { results.push({ ok: false, msg: 'Could not tell which AI this is from. The code is missing or wrong.' }); continue; }
         const msg = kind === 'SYNC' ? doSync(t, id, m[2].replace(/[*`]/g, '').replace(/^.*?notes\s*=\s*/i, '')) : kind === 'NOTES' ? doNotes(t, id, m[2].replace(/[*`]/g, '').replace(/^.*?notes\s*=\s*/i, '')) : kind === 'RETIRE' ? doRetire(t, id, p.n || p.note, p.why) : kind === 'PLAY' ? doPlay(t, id, n => p[n]) : kind === 'DIAG' ? doDiag(t, id, n => p[n], 'paste') : kind === 'CHECKIN' ? doCheckin(t, id, p.reach || p['can reach'] || p.good, p.accounts || p.account, p.v) : kind === 'CLAIM' ? doClaim(t, id, p.source || p.mission, p.task, p.bot) : doDone(t, id, p.source || p.mission, p.task, p.link, p.minutes, p.bot);
@@ -631,6 +640,7 @@ async function coach(req, res, parts, q) {
         results.push({ ok: !/^(REJECTED|BLOCKED|HOLD|NOT RECORDED)/.test(msg), kind, id, msg: msg.split('\n')[0].replace(/ Do not open the check-in link.*$/, '') });
       }
     });
+    if (checkinError) return send(res, 400, { error: checkinError });
     return t ? send(res, 200, { results, state: view(t) }) : send(res, 401, { error: 'Not signed in.' });
   }
   if (action === 'delete') { // delete the team, its log and the login, and archive every AI key. Cannot be undone.
